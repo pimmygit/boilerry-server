@@ -1,0 +1,24 @@
+#! /bin/sh
+# /etc/init.d/boilerry
+
+export BHOME=/opt/boilerry
+
+case "$1" in
+  start)
+    echo "Starting boilerry"
+    sudo /usr/bin/python3 $BHOME/Boilerry.py &
+    ;;
+  stop)
+    echo "Stopping boilerry"
+    PID_LIST=`pgrep -f Boilerry.py &`
+    for PID in $PID_LIST; do
+      sudo kill -9 $PID
+    done
+    ;;
+  *)
+    echo "Usage: /etc/init.d/boilerry {start|stop}"
+    exit 1
+    ;;
+esac
+
+exit 0
