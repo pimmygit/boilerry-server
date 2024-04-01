@@ -19,7 +19,7 @@
 ###################################################################
 from Common import get_room_temperature, logger
 from ConfigStore import ConfigStore
-from Constants import FINER
+from Constants import FINER, CONST_TEMPERATURE_HISTORY
 from Constants import CONST_THERMO_TEMPERATURE, CONST_THERMO_SWITCH, CONST_THERMO_STATE, CONST_TEMPERATURE_ROOM
 from DS18B20 import DS18B20
 from DatabaseDAO import DatabaseDAO
@@ -55,6 +55,7 @@ class Thermostat:
         self.thermo_manual_temperature = self.dao.get_thermostat_manual()
         self.thermo_state = self.gpio.getRelaysState()
         self.temperature_room = get_room_temperature(self)
+        self.temperature_history = self.dao.get_temperature_history(self.config.getSensor("sensor_1_id"))
 
     def get_thermo_switch(self):
         return self.thermo_switch
@@ -83,3 +84,10 @@ class Thermostat:
     def refresh_room_temperature(self):
         logger(FINER, self.CLASS, "Updating: {}.".format(CONST_TEMPERATURE_ROOM))
         self.temperature_room = get_room_temperature(self)
+
+    def get_temperature_history(self):
+        return self.temperature_history
+
+    def refresh_temperature_history(self, start_period: str = None, end_period: str = None):
+        logger(FINER, self.CLASS, "Updating: {}.".format(CONST_TEMPERATURE_HISTORY))
+        self.temperature_history = self.dao.get_temperature_history(self.config.getSensor("sensor_1_id"), start_period, end_period)

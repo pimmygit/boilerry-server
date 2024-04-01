@@ -1,6 +1,7 @@
 #!/usr/bin/python
 
 from datetime import timezone, datetime
+from dateutil.parser import parse
 from time import gmtime, strftime
 from tokenize import String
 
@@ -23,6 +24,22 @@ def get_room_temperature(self) -> float:
         thermo_units
     )
     return float(room_temperature)
+
+
+def validateDateTime(datetime_text: str) -> bool:
+    """
+    Verifies that the date is in the right format.
+
+    Args:
+        datetime_text:  Datetime to validate for accurate format: %Y-%m-%d %H:%M:%S
+
+    Returns:
+        bool:           True if validated OK, false otherwise.
+    """
+    try:
+        return bool(parse(datetime_text, dayfirst=True))
+    except ValueError:
+        return False
 
 
 def getCurrentTime() -> str:

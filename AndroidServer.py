@@ -27,7 +27,7 @@ import websockets
 
 from Common import logger
 from ConfigStore import ConfigStore
-from Constants import CONST_GET_STATE
+from Constants import CONST_GET_STATE, CONST_TEMPERATURE_HISTORY
 from Constants import CONST_THERMO_STATE, CONST_THERMO_TEMPERATURE, CONST_TEMPERATURE_ROOM, CONST_THERMO_SWITCH
 from Constants import WARNING, INFO, FINE, FINER, FINEST
 from DS18B20 import DS18B20
@@ -54,7 +54,8 @@ def init_response():
     json_response += "\"" + CONST_THERMO_STATE + "\": \"True\", "
     json_response += "\"" + CONST_THERMO_SWITCH + "\": \"1\", "
     json_response += "\"" + CONST_THERMO_TEMPERATURE + "\": \"0.0\", "
-    json_response += "\"" + CONST_TEMPERATURE_ROOM + "\": \"0.0\""
+    json_response += "\"" + CONST_TEMPERATURE_ROOM + "\": \"0.0\", "
+    json_response += "\"" + CONST_TEMPERATURE_HISTORY + "\": \"[]\""
     json_response += "}"
 
     return json.loads(json_response)
@@ -183,6 +184,11 @@ class AndroidServer:
         json_module_response[CONST_TEMPERATURE_ROOM] = thermostat.get_room_temperature()
         logger(FINEST, self.CLASS, "State->{}: {}".
                format(CONST_TEMPERATURE_ROOM, json_module_response[CONST_TEMPERATURE_ROOM]))
+
+        # Get the historical temperature
+        json_module_response[CONST_TEMPERATURE_HISTORY] = thermostat.get_temperature_history()
+        logger(FINEST, self.CLASS, "DAO result->{}: {}".
+               format(CONST_TEMPERATURE_HISTORY, json_module_response[CONST_TEMPERATURE_HISTORY]))
 
         logger(FINER, self.CLASS, "Sending response: {}".format(json.dumps(json_module_response)))
         return json_module_response

@@ -2,7 +2,7 @@
 ###################################################################
 # Heating system control with Raspberry Pi
 # -----------------------------------------------------------------
-# (C) Copyright VAYAK Ltd (info@vayak.com). 2018, 2023
+# (C) Copyright VAYAK Ltd (info@vayak.com). 2018, 2024
 # All Rights Reserved
 #
 # THIS IS UNPUBLISHED PROPRIETARY SOURCE CODE
@@ -17,10 +17,11 @@
 # Use, copying, and/or disclosure of the file is strictly
 # prohibited unless otherwise provided in the license agreement.
 ###################################################################
-import MySQLdb as SQL
-from typing import Dict
+import datetime
 
-from Common import logger, timestampToDatetime
+import MySQLdb as SQL
+
+from Common import logger, timestampToDatetime, validateDateTime
 from Constants import CRITICAL, WARNING, FINE, FINER, FINEST
 from Constants import DB_HOST, DB_PORT, DB_NAME, DB_USER, DB_PASS
 
@@ -60,6 +61,62 @@ class DatabaseDAO:
         logger(FINEST, self.CLASS, "Returning cursor..")
         self.db_conn.ping(True)
         return self.db_conn.cursor()
+
+    def get_temperature_history(self, sensor: str, start_period: str = None, end_period: str = None) -> str:
+        """
+        Function to retrieve the temperature for the Always ON thermostat setting.
+
+        Args:
+            sensor:         ID of the sensor that needs to hbe read
+            start_period:   Timestamp in the format "dd/mm/yyyy hh/mm"
+            end_period:     Timestamp in the format "dd/mm/yyyy hh/mm"
+
+        Returns:            The temperature for Always ON thermostat setting.
+        Created:            31/03/2024
+        """
+        if not start_period or not validateDateTime(start_period):
+            logger(FINER, self.CLASS, "Retrieving historical temperature failed to recognise start period: {}".format(start_period))
+            start_period = "NOW() - INTERVAL 1 WEEK"
+        else:
+            start_period = "\"{}\"".format(start_period)
+
+        if not end_period or not validateDateTime(end_period):
+            logger(FINER, self.CLASS, "Retrieving historical temperature failed to recognise end period: {}".format(end_period))
+            end_period = "NOW()"
+        else:
+            end_period = "\"{}\"".format(end_period)
+
+        """
+        That doesnt work as the NOW() gets encapsulated in quotes and MySQL does not recognise it as a function.
+        -----------------------------------------------
+        query = "SELECT value, unit, datetime FROM temperature WHERE sensor = %s AND datetime >= %s AND datetime <= %s".format(
+            sensor, start_period, end_period
+        )
+        logger(FINEST, self.CLASS, "SQL: {} -> sensor[{}], start_period[{}], end_period[{}].".format(
+            query, sensor, start_period, end_period))
+        """
+        query = "SELECT value, unit, datetime FROM temperature WHERE sensor = \"{}\" AND datetime >= {} AND datetime <= {}".format(
+            sensor, start_period, end_period
+        )
+        logger(FINEST, self.CLASS, "SQL: {}.".format(query))
+
+        cursor = self.get_cursor()
+        cursor.execute(query)
+        logger(FINEST, self.CLASS, "SQL executed.")
+
+        temperature_history_json = []
+        for result in cursor:
+            temperature_history_json.append({
+                "temperature": "{}".format(result[0]),
+                "unit": "{}".format(result[1]),
+                "datetime": "{}".format(result[2].timestamp())
+            })
+
+        logger(FINER, self.CLASS, "Retrieved {} temperatures from the database.".format(len(temperature_history_json)))
+
+        # logger(FINEST, self.CLASS, "Returning: {}".format(temperature_history_json))
+
+        return "[{}]".format(",".join(map(str, temperature_history_json)))
 
     def save_temperature(self, sensor: str, unit: str, temperature: float):
         """

@@ -51,5 +51,6 @@ CONST_THERMO_TEMPERATURE = "thermo_temperature"
 # Temperature sensor
 CONST_TEMPERATURE_RECORDING_INTERVAL = "temperature_recording_interval"
 CONST_TEMPERATURE_ROOM = "temperature_room"
+CONST_TEMPERATURE_HISTORY = "temperature_history"
 CONST_TEMPERATURE_TIMEOUT = "thermo_timeout"
 CONST_TEMPERATURE_UNITS = "thermo_units"
