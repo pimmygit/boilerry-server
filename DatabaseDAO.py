@@ -22,7 +22,7 @@ import datetime
 import MySQLdb as SQL
 
 from Common import logger, timestampToDatetime, validateDateTime
-from Constants import CRITICAL, WARNING, FINE, FINER, FINEST
+from Constants import CRITICAL, WARNING, FINE, FINER, FINEST, CONST_TEMPERATURE_HISTORY
 from Constants import DB_HOST, DB_PORT, DB_NAME, DB_USER, DB_PASS
 
 
@@ -62,41 +62,41 @@ class DatabaseDAO:
         self.db_conn.ping(True)
         return self.db_conn.cursor()
 
-    def get_temperature_history(self, sensor: str, start_period: str = None, end_period: str = None) -> str:
+    def get_temperature_history(self, sensor: str, period_start: str = None, period_end: str = None) -> str:
         """
         Function to retrieve the temperature for the Always ON thermostat setting.
 
         Args:
-            sensor:         ID of the sensor that needs to hbe read
-            start_period:   Timestamp in the format "dd/mm/yyyy hh/mm"
-            end_period:     Timestamp in the format "dd/mm/yyyy hh/mm"
+            sensor:         Name of the sensor that needs to be read. The actual ID will be retrieved from the configuration file.
+            period_start:   Timestamp in the format "dd/mm/yyyy hh/mm"
+            period_end:     Timestamp in the format "dd/mm/yyyy hh/mm"
 
         Returns:            The temperature for Always ON thermostat setting.
         Created:            31/03/2024
         """
-        if not start_period or not validateDateTime(start_period):
-            logger(FINER, self.CLASS, "Retrieving historical temperature failed to recognise start period: {}".format(start_period))
-            start_period = "NOW() - INTERVAL 1 WEEK"
+        if not period_start or not validateDateTime(period_start):
+            logger(FINER, self.CLASS, "Retrieving historical temperature failed to recognise start period: {}".format(period_start))
+            period_start = "NOW() - INTERVAL 1 WEEK"
         else:
-            start_period = "\"{}\"".format(start_period)
+            period_start = "\"{}\"".format(period_start)
 
-        if not end_period or not validateDateTime(end_period):
-            logger(FINER, self.CLASS, "Retrieving historical temperature failed to recognise end period: {}".format(end_period))
-            end_period = "NOW()"
+        if not period_end or not validateDateTime(period_end):
+            logger(FINER, self.CLASS, "Retrieving historical temperature failed to recognise end period: {}".format(period_end))
+            period_end = "NOW()"
         else:
-            end_period = "\"{}\"".format(end_period)
+            period_end = "\"{}\"".format(period_end)
 
         """
         That doesnt work as the NOW() gets encapsulated in quotes and MySQL does not recognise it as a function.
         -----------------------------------------------
         query = "SELECT value, unit, datetime FROM temperature WHERE sensor = %s AND datetime >= %s AND datetime <= %s".format(
-            sensor, start_period, end_period
+            sensor, period_start, period_end
         )
-        logger(FINEST, self.CLASS, "SQL: {} -> sensor[{}], start_period[{}], end_period[{}].".format(
-            query, sensor, start_period, end_period))
+        logger(FINEST, self.CLASS, "SQL: {} -> sensor[{}], period_start[{}], period_end[{}].".format(
+            query, sensor, period_start, period_end))
         """
         query = "SELECT value, unit, datetime FROM temperature WHERE sensor = \"{}\" AND datetime >= {} AND datetime <= {}".format(
-            sensor, start_period, end_period
+            sensor, period_start, period_end
         )
         logger(FINEST, self.CLASS, "SQL: {}.".format(query))
 
@@ -116,7 +116,17 @@ class DatabaseDAO:
 
         # logger(FINEST, self.CLASS, "Returning: {}".format(temperature_history_json))
 
-        return "[{}]".format(",".join(map(str, temperature_history_json)))
+        data = ",".join(map(str, temperature_history_json))
+
+        json_response = "{"
+        json_response += "\"name\": \"" + CONST_TEMPERATURE_HISTORY + "\", "
+        json_response += "\"sensor\": \"" + sensor + "\", "
+        json_response += "\"period_start\": \"" + period_start + "\", "
+        json_response += "\"period_end\": \"" + period_end + "\", "
+        json_response += "\"data\": [" + data + "]"
+        json_response += "}"
+
+        return json_response
 
     def save_temperature(self, sensor: str, unit: str, temperature: float):
         """

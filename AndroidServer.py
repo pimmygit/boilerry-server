@@ -138,7 +138,7 @@ class AndroidServer:
             11/Dec/2023
         """
         try:
-            if json_request["name"] == CONST_GET_STATE:
+            if json_request["name"] == CONST_GET_STATE or json_request["name"] == CONST_TEMPERATURE_HISTORY :
                 # We are not changing the state of the boiler, just getting its state.
                 return True
         except KeyError:
@@ -230,8 +230,11 @@ class AndroidServer:
             thermostat.refresh_thermo_state()
 
             if json_request["name"] == CONST_TEMPERATURE_HISTORY:
-                await websocket.send(json.dumps(self.dao.get_temperature_history(self.config.getSensor("sensor_1_id"))))
-                logger(FINEST, self.CLASS, "Response sent: {}".format(CONST_TEMPERATURE_HISTORY))
+                if not json_request["sensor"] or json_request["sensor"] == "":
+                    logger(WARNING, self.CLASS, "Request '{}' is missing the sensor name parameter 'sensor'.".format(CONST_TEMPERATURE_HISTORY))
+                else:
+                    await websocket.send(json.dumps(self.dao.get_temperature_history(json_request["sensor"])))
+                    logger(FINEST, self.CLASS, "Response sent: name[{}], sensor[{}].".format(CONST_TEMPERATURE_HISTORY, json_request["sensor"]))
             else:
                 # Regardless of the request/command that was sent to the server (us),
                 # we respond with the full state of the system

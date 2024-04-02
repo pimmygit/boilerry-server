@@ -108,7 +108,7 @@ class ThermoControl(threading.Thread):
                     getCurrentTimeMinutes(), self.config.getBoilerryServer(CONST_TEMPERATURE_RECORDING_INTERVAL, "10")
                 ))
                 self.dao.save_temperature(
-                    self.config.getSensor("sensor_1_id"),
+                    "sensor_1",
                     self.config.getBoilerryServer(CONST_TEMPERATURE_UNITS, "C"),
                     self.thermo_sensor.getTemp(
                         self.config.getSensor("sensor_1_id"),
