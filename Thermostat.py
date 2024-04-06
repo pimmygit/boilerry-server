@@ -17,10 +17,10 @@
 # Use, copying, and/or disclosure of the file is strictly
 # prohibited unless otherwise provided in the license agreement.
 ###################################################################
-from Common import get_room_temperature, logger
+from Common import get_temperature_now, logger
 from ConfigStore import ConfigStore
 from Constants import FINER
-from Constants import CONST_THERMO_TEMPERATURE, CONST_THERMO_SWITCH, CONST_THERMO_STATE, CONST_TEMPERATURE_ROOM
+from Constants import CONST_THERMO_TEMPERATURE, CONST_THERMO_SWITCH, CONST_THERMO_RELAY, CONST_TEMP_NOW
 from DS18B20 import DS18B20
 from DatabaseDAO import DatabaseDAO
 from GPIO import GPIO
@@ -53,8 +53,8 @@ class Thermostat:
 
         self.thermo_switch = self.config.getBoilerryServer(CONST_THERMO_SWITCH, "1")
         self.thermo_manual_temperature = self.dao.get_thermostat_manual()
-        self.thermo_state = self.gpio.getRelaysState()
-        self.temperature_room = get_room_temperature(self)
+        self.thermo_relay = self.gpio.getRelayState()
+        self.temperature_now = get_temperature_now(self)
 
     def get_thermo_switch(self):
         return self.thermo_switch
@@ -71,15 +71,15 @@ class Thermostat:
         self.thermo_manual_temperature = self.dao.get_thermostat_manual()
 
     def get_thermo_state(self):
-        return self.thermo_state
+        return self.thermo_relay
 
     def refresh_thermo_state(self):
-        logger(FINER, self.CLASS, "Updating: {}.".format(CONST_THERMO_STATE))
-        self.thermo_state = self.gpio.getRelaysState()
+        logger(FINER, self.CLASS, "Updating: {}.".format(CONST_THERMO_RELAY))
+        self.thermo_relay = self.gpio.getRelayState()
 
-    def get_room_temperature(self):
-        return self.temperature_room
+    def get_temperature_now(self):
+        return self.temperature_now
 
     def refresh_room_temperature(self):
-        logger(FINER, self.CLASS, "Updating: {}.".format(CONST_TEMPERATURE_ROOM))
-        self.temperature_room = get_room_temperature(self)
+        logger(FINER, self.CLASS, "Updating: {}.".format(CONST_TEMP_NOW))
+        self.temperature_now = get_temperature_now(self)

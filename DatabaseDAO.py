@@ -18,11 +18,12 @@
 # prohibited unless otherwise provided in the license agreement.
 ###################################################################
 import datetime
+from json.decoder import JSONObject, JSONArray
 
 import MySQLdb as SQL
 
 from Common import logger, timestampToDatetime, validateDateTime
-from Constants import CRITICAL, WARNING, FINE, FINER, FINEST, CONST_TEMPERATURE_HISTORY
+from Constants import CRITICAL, WARNING, FINE, FINER, FINEST, CONST_TEMP_HISTORY
 from Constants import DB_HOST, DB_PORT, DB_NAME, DB_USER, DB_PASS
 
 
@@ -107,9 +108,9 @@ class DatabaseDAO:
         temperature_history_json = []
         for result in cursor:
             temperature_history_json.append({
+                "datetime": "{}".format(result[2].timestamp()),
                 "temperature": "{}".format(result[0]),
-                "unit": "{}".format(result[1]),
-                "datetime": "{}".format(result[2].timestamp())
+                "unit": "{}".format(result[1])
             })
 
         logger(FINER, self.CLASS, "Retrieved {} temperatures from the database.".format(len(temperature_history_json)))
@@ -118,15 +119,21 @@ class DatabaseDAO:
 
         data = ",".join(map(str, temperature_history_json))
 
-        json_response = "{"
-        json_response += "\"name\": \"" + CONST_TEMPERATURE_HISTORY + "\", "
-        json_response += "\"sensor\": \"" + sensor + "\", "
-        json_response += "\"period_start\": \"" + period_start + "\", "
-        json_response += "\"period_end\": \"" + period_end + "\", "
-        json_response += "\"data\": [" + data + "]"
-        json_response += "}"
+        json_response = """
+        "name": "{}",
+        "sensor": "{}",
+        "period_start": "{}",
+        "period_end": "{}",
+        "measurements": [{}]
+        """.format(
+            CONST_TEMP_HISTORY,
+            sensor,
+            period_start,
+            period_end,
+            data
+        )
 
-        return json_response
+        return "{" + json_response + "}"
 
     def save_temperature(self, sensor: str, unit: str, temperature: float):
         """

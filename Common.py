@@ -9,18 +9,22 @@ from Constants import *
 from ConfigStore import ConfigStore
 
 
-def get_room_temperature(self) -> float:
+def get_temperature_now(self, sensor: str = "sensor_1") -> float:
     """
     Retrieves the room temperature reading from the sensor
+
+    Args:
+        self:       The caller.
+        sensor:     Which sensor to read, as defined in the boilerry.ini file
     Returns:
-        The room temperature reading
+        float:      The room temperature reading
     Created:
         08/02/2024
     """
-    thermo_units = self.config.setBoilerryServer(CONST_TEMPERATURE_UNITS, "C")
+    thermo_units = self.config.setBoilerryServer(CONST_TEMP_UNITS, "C")
     room_temperature = self.thermo_sensor.getTemp(
-        self.config.getSensor("sensor_1_id"),
-        self.config.getSensor("sensor_1_timeout"),
+        self.config.getSensor(sensor + "_id"),
+        self.config.getSensor(sensor + "_timeout"),
         thermo_units
     )
     return float(room_temperature)

@@ -27,8 +27,8 @@ import websockets
 
 from Common import logger
 from ConfigStore import ConfigStore
-from Constants import CONST_GET_STATE, CONST_TEMPERATURE_HISTORY
-from Constants import CONST_THERMO_STATE, CONST_THERMO_TEMPERATURE, CONST_TEMPERATURE_ROOM, CONST_THERMO_SWITCH
+from Constants import CONST_THERMO_STATE, CONST_TEMP_HISTORY
+from Constants import CONST_THERMO_RELAY, CONST_THERMO_TEMPERATURE, CONST_TEMP_NOW, CONST_THERMO_SWITCH
 from Constants import WARNING, INFO, FINE, FINER, FINEST
 from DS18B20 import DS18B20
 from DatabaseDAO import DatabaseDAO
@@ -51,10 +51,10 @@ def init_state_response():
     Modified: 07/12/2023
     """
     json_response = "{"
-    json_response += "\"" + CONST_THERMO_STATE + "\": \"True\", "
+    json_response += "\"" + CONST_THERMO_RELAY + "\": \"True\", "
     json_response += "\"" + CONST_THERMO_SWITCH + "\": \"1\", "
     json_response += "\"" + CONST_THERMO_TEMPERATURE + "\": \"0.0\", "
-    json_response += "\"" + CONST_TEMPERATURE_ROOM + "\": \"0.0\""
+    json_response += "\"" + CONST_TEMP_NOW + "\": \"0.0\""
     json_response += "}"
 
     return json.loads(json_response)
@@ -69,6 +69,7 @@ class AndroidServer:
     -----------------------------------------------------------------
     1.0.0. | 24.02.2018 - First version
     """
+
     def __init__(self, dao: DatabaseDAO, gpio: GPIO, sensor: DS18B20):
         """
         Initialise and start the thread which listens for connections and act on requests.
@@ -91,8 +92,10 @@ class AndroidServer:
         def_host = ""
         def_port = "9741"
 
-        logger(FINER, self.CLASS, "Opening WebSocket on port: {}..".format(self.config.getAndroidServer("port", def_port)))
-        handler = websockets.serve(self.process_request, self.config.getAndroidServer("host", def_host), self.config.getAndroidServer("port", def_port))
+        logger(FINER, self.CLASS,
+               "Opening WebSocket on port: {}..".format(self.config.getAndroidServer("port", def_port)))
+        handler = websockets.serve(self.process_request, self.config.getAndroidServer("host", def_host),
+                                   self.config.getAndroidServer("port", def_port))
         logger(FINER, self.CLASS, "Handler created.".format(self.config.getAndroidServer("port", def_port)))
         asyncio.get_event_loop().run_until_complete(handler)
         logger(FINER, self.CLASS, "Websocket created.".format(self.config.getAndroidServer("port", def_port)))
@@ -126,7 +129,7 @@ class AndroidServer:
         else:
             return json_request
 
-    def validate_request(self, json_request: json) -> json:
+    def validate_request(self, json_request: json) -> bool:
         """
         Checks that all expected elements in the JSON request are present
 
@@ -138,19 +141,30 @@ class AndroidServer:
             11/Dec/2023
         """
         try:
-            if json_request["name"] == CONST_GET_STATE or json_request["name"] == CONST_TEMPERATURE_HISTORY :
-                # We are not changing the state of the boiler, just getting its state.
-                return True
+            if not json_request["name"] == CONST_THERMO_STATE and not json_request["name"] == CONST_TEMP_HISTORY:
+                logger(WARNING, self.CLASS, "Invalid JSON: Unrecognised element name: {}".format(json_request["name"]))
+                return False
         except KeyError:
-            logger(WARNING, self.CLASS, "JSON has no element: name")
+            logger(WARNING, self.CLASS, "Invalid JSON: The response has no element: name")
             return False
 
         try:
-            if json_request["value"] is None:
-                logger(WARNING, self.CLASS, "JSON element value is None.")
+            if not json_request["action"] == "get" and not json_request["action"] == "set":
+                logger(WARNING, self.CLASS, "Invalid JSON: Unrecognised element name: {}".format(json_request["action"]))
+                return False
         except KeyError:
-            logger(WARNING, self.CLASS, "JSON has no element: value")
+            logger(WARNING, self.CLASS, "Invalid JSON: The response has no element: action")
             return False
+
+        if json_request["action"] == "set":
+            """We expect a value to set"""
+            try:
+                if json_request["value"] == "":
+                    logger(WARNING, self.CLASS, "Invalid JSON: No value provided for setting: {}".format(json_request["name"]))
+                    return False
+            except KeyError:
+                logger(WARNING, self.CLASS, "Invalid JSON: The response has no element: value")
+                return False
 
         return True
 
@@ -166,9 +180,9 @@ class AndroidServer:
         json_module_response = init_state_response()
 
         # Get the thermostat state
-        json_module_response[CONST_THERMO_STATE] = thermostat.get_thermo_state()
+        json_module_response[CONST_THERMO_RELAY] = thermostat.get_thermo_state()
         logger(FINEST, self.CLASS, "State->{}: {}".format(
-            CONST_THERMO_STATE, str(json_module_response[CONST_THERMO_STATE]).lower()))
+            CONST_THERMO_RELAY, str(json_module_response[CONST_THERMO_RELAY]).lower()))
 
         # Get the thermostat switch position
         json_module_response[CONST_THERMO_SWITCH] = thermostat.get_thermo_switch()
@@ -177,12 +191,13 @@ class AndroidServer:
 
         # Get the thermostat temperature value for the Always ON setting (timeStart="00:00" and timeEnd="00:00":
         json_module_response[CONST_THERMO_TEMPERATURE] = thermostat.get_thermo_manual_temperature()
-        logger(FINEST, self.CLASS, "DAO result: thermostat->manual_temp[{}]".format(thermostat.get_thermo_manual_temperature()))
+        logger(FINEST, self.CLASS,
+               "DAO result: thermostat->manual_temp[{}]".format(thermostat.get_thermo_manual_temperature()))
 
         # Get the current room temperature
-        json_module_response[CONST_TEMPERATURE_ROOM] = thermostat.get_room_temperature()
+        json_module_response[CONST_TEMP_NOW] = thermostat.get_temperature_now()
         logger(FINEST, self.CLASS, "State->{}: {}".
-               format(CONST_TEMPERATURE_ROOM, json_module_response[CONST_TEMPERATURE_ROOM]))
+               format(CONST_TEMP_NOW, json_module_response[CONST_TEMP_NOW]))
 
         logger(FINER, self.CLASS, "Sending response: {}".format(json.dumps(json_module_response)))
         return json_module_response
@@ -225,18 +240,22 @@ class AndroidServer:
             thermostat = Thermostat(self.dao, self.gpio, self.thermo_sensor)
 
             # Process the newly received settings immediately
-            self.gpio.temperature_to_relay_state(thermostat.get_thermo_manual_temperature(), thermostat.get_room_temperature())
+            self.gpio.temperature_to_relay_state(thermostat.get_thermo_manual_temperature(),
+                                                 thermostat.get_temperature_now())
             # After changing the relay state, we must update the Thermostat object
             thermostat.refresh_thermo_state()
 
-            if json_request["name"] == CONST_TEMPERATURE_HISTORY:
-                if not json_request["sensor"] or json_request["sensor"] == "":
-                    logger(WARNING, self.CLASS, "Request '{}' is missing the sensor name parameter 'sensor'.".format(CONST_TEMPERATURE_HISTORY))
+            if json_request["name"] == CONST_TEMP_HISTORY:
+                sensor = json_request["value"]
+                if not sensor or sensor == "":
+                    logger(WARNING, self.CLASS,
+                           "Request '{}' is missing the sensor name parameter 'sensor'.".format(CONST_TEMP_HISTORY))
                 else:
-                    await websocket.send(json.dumps(self.dao.get_temperature_history(json_request["sensor"])))
-                    logger(FINEST, self.CLASS, "Response sent: name[{}], sensor[{}].".format(CONST_TEMPERATURE_HISTORY, json_request["sensor"]))
+                    await websocket.send(self.dao.get_temperature_history(sensor))
+                    logger(FINEST, self.CLASS,
+                           "Response sent: name[{}], sensor[{}].".format(CONST_TEMP_HISTORY, sensor))
             else:
                 # Regardless of the request/command that was sent to the server (us),
                 # we respond with the full state of the system
                 await websocket.send(json.dumps(self.build_state_response(thermostat)))
-                logger(FINEST, self.CLASS, "Response sent: {}".format(CONST_THERMO_STATE))
+                logger(FINEST, self.CLASS, "Response sent: {}".format(CONST_THERMO_RELAY))

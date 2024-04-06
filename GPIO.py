@@ -47,11 +47,16 @@ class GPIO:
         RPIGPIO.setup(self.config.getGpioPin("relay_1"), RPIGPIO.OUT)
         RPIGPIO.setup(self.config.getGpioPin("relay_2"), RPIGPIO.OUT)
 
-    def getRelaysState(self) -> bool:
+    def getRelayState(self) -> bool:
         """
         Function to read the state of the relays and determine the state:
             HEATING_MODE_ON    -> GPIO_PIN_RELAY_1[1]
             HEATING_MODE_OFF   -> GPIO_PIN_RELAY_1[0] && GPIO_PIN_RELAY_2[1]
+
+        NOTE:   Although the function act as there is one On/Off relay, there are in fact two relays to control.
+                The reason is that with two relays we can ensure that the hardware bypasses when the power is off.
+                For details on how this works, refer to the relays wiring diagram.
+
         Returns:
             Determine if the heating is ON or OFF, based on the state of the relay switches
         Created:
@@ -75,13 +80,18 @@ class GPIO:
                            self.config.getGpioPin("relay_2"), relay_state_2))
             return bool(HEATING_STATE_ON)
 
-    def setRelaysState(self, state: int):
+    def setRelayState(self, state: int):
         """
         Function to set the state of the relays:
             HEATING_MODE_ON    -> GPIO_PIN_RELAY_1[1]
             HEATING_MODE_OFF   -> GPIO_PIN_RELAY_1[0] && GPIO_PIN_RELAY_2[1]
+
+        NOTE:   Although the function act as there is one On/Off relay, there are in fact two relays to control.
+                The reason is that with two relays we can ensure that the hardware bypasses when the power is off.
+                For details on how this works, refer to the relays wiring diagram.
+
         Args:
-            state:  Value: HEATING_MODE_ON | HEATING_MODE_OFF
+            state:  Value: HEATING_STATE_ON | HEATING_STATE_OFF
         Returns:
             none
         Config:
@@ -104,7 +114,7 @@ class GPIO:
             RPIGPIO.output(self.config.getGpioPin("relay_1"), RPIGPIO.HIGH)
             RPIGPIO.output(self.config.getGpioPin("relay_2"), RPIGPIO.HIGH)
 
-        state_real = str(self.getRelaysState()).lower()
+        state_real = str(self.getRelayState()).lower()
 
         if str(state).lower() != state_real:
             logger(WARNING, self.CLASS,
@@ -124,8 +134,8 @@ class GPIO:
         if thermo_temperature <= round(room_temperature):
             logger(FINE, self.CLASS, "Setting 'Heating state OFF': set[{}] <= measured[{}]".format(
                 thermo_temperature, round(room_temperature)))
-            self.setRelaysState(HEATING_STATE_OFF)
+            self.setRelayState(HEATING_STATE_OFF)
         else:
             logger(FINE, self.CLASS, "Setting 'Heating state ON': set[{}] > measured[{}]".format(
                 thermo_temperature, round(room_temperature)))
-            self.setRelaysState(HEATING_STATE_ON)
+            self.setRelayState(HEATING_STATE_ON)

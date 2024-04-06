@@ -43,14 +43,13 @@ HEATING_MODE_TIMED = 2
 HEATING_MODE_AUTO = 3
 
 # Thermostat
-CONST_GET_STATE = "getstate"
-CONST_THERMO_SWITCH = "thermo_switch"
 CONST_THERMO_STATE = "thermo_state"
+CONST_THERMO_SWITCH = "thermo_switch"
+CONST_THERMO_RELAY = "thermo_relay"
 CONST_THERMO_TEMPERATURE = "thermo_temperature"
 
 # Temperature sensor
-CONST_TEMPERATURE_RECORDING_INTERVAL = "temperature_recording_interval"
-CONST_TEMPERATURE_ROOM = "temperature_room"
-CONST_TEMPERATURE_HISTORY = "temperature_history"
-CONST_TEMPERATURE_TIMEOUT = "thermo_timeout"
-CONST_TEMPERATURE_UNITS = "thermo_units"
+CONST_TEMP_RECORD_INTERVAL = "temp_record_interval"
+CONST_TEMP_NOW = "temp_now"
+CONST_TEMP_HISTORY = "temp_history"
+CONST_TEMP_UNITS = "temp_units"

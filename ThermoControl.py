@@ -42,7 +42,6 @@ class ThermoControl(threading.Thread):
         Create object and initialize
 
         Args:
-            config: Configuration store
             dao:    Database Access Object: MySQL database
             gpio:   The interface to external peripheral
             sensor: USB temperature sensor
@@ -78,13 +77,13 @@ class ThermoControl(threading.Thread):
             'Maintain the Always ON temperature'
             if thermo_switch == 1:
                 thermo_temperature = self.dao.get_thermostat_manual()
-                room_temperature = get_room_temperature(self)
+                room_temperature = get_temperature_now(self)
                 self.gpio.temperature_to_relay_state(thermo_temperature, room_temperature)
 
             'Force switch off the heating'
             if thermo_switch == 0:
                 logger(FINE, self.CLASS, "Thermostat  OFF")
-                self.gpio.setRelaysState(HEATING_STATE_OFF)
+                self.gpio.setRelayState(HEATING_STATE_OFF)
                 # self.stop()
 
             '''
@@ -93,11 +92,11 @@ class ThermoControl(threading.Thread):
             divided by the period specified in the property.
             '''
             try:
-                thermo_record_interval = int(self.config.getBoilerryServer(CONST_TEMPERATURE_RECORDING_INTERVAL, "10"))
+                thermo_record_interval = int(self.config.getBoilerryServer(CONST_TEMP_RECORD_INTERVAL, "10"))
             except ValueError:
                 thermo_record_interval = 10
                 logger(FINEST, self.CLASS, "Temperature recording property '{}' is not an integer: {}.".format(
-                    CONST_TEMPERATURE_RECORDING_INTERVAL, self.config.getBoilerryServer(CONST_TEMPERATURE_RECORDING_INTERVAL, "10")
+                    CONST_TEMP_RECORD_INTERVAL, self.config.getBoilerryServer(CONST_TEMP_RECORD_INTERVAL, "10")
                 ))
 
             # Let's do some checks and let the user know if the settings look abnormal
@@ -105,15 +104,16 @@ class ThermoControl(threading.Thread):
                 logger(FINEST, self.CLASS, "Recording temperature is OFF.")
             elif getCurrentTimeMinutes() % thermo_record_interval == 0:
                 logger(FINEST, self.CLASS, "Recording temperature current_minutes[{}], interval[{}].".format(
-                    getCurrentTimeMinutes(), self.config.getBoilerryServer(CONST_TEMPERATURE_RECORDING_INTERVAL, "10")
+                    getCurrentTimeMinutes(), self.config.getBoilerryServer(CONST_TEMP_RECORD_INTERVAL, "10")
                 ))
+                sensor = "sensor_1"
                 self.dao.save_temperature(
-                    "sensor_1",
-                    self.config.getBoilerryServer(CONST_TEMPERATURE_UNITS, "C"),
+                    sensor,
+                    self.config.getBoilerryServer(CONST_TEMP_UNITS, "C"),
                     self.thermo_sensor.getTemp(
-                        self.config.getSensor("sensor_1_id"),
-                        int(self.config.getSensor("sensor_1_timeout")),
-                        self.config.getBoilerryServer(CONST_TEMPERATURE_UNITS, "C"),
+                        self.config.getSensor(sensor + "_id"),
+                        int(self.config.getSensor(sensor + "_timeout")),
+                        self.config.getBoilerryServer(CONST_TEMP_UNITS, "C"),
                     )
                 )
 
