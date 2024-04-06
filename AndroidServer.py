@@ -115,7 +115,7 @@ class AndroidServer:
         """Nothing below the line above will get executed - it loops the asyncio forever."""
         asyncio.get_event_loop().run_forever()
 
-    def get_json_from_request(self, request_string: str):
+    def get_json_from_request(self, request_string: str) -> json:
         """
         Parses the request to retrieve the action, parameter and value
         WARNING: Virtually no security here. The accepted format of the request is:
@@ -125,7 +125,7 @@ class AndroidServer:
         Args:
             request_string: Request string from the client
         Returns:
-            Tuple(action[0], parameter[1], value[2])
+            json:           The HTTP request JSON
         Modified: 08.04.2018
         """
         logger(FINER, self.CLASS, "Loading request string: {}".format(request_string))
@@ -260,7 +260,7 @@ class AndroidServer:
             # After changing the relay state, we must update the Thermostat object
             thermostat.refresh_thermo_state()
 
-            if json_request["name"] == CONST_TEMP_HISTORY and json_request["action"] == "set":
+            if json_request["name"] == CONST_TEMP_HISTORY and json_request["action"] == "get":
                 sensor = json_request["value"]
                 await websocket.send(self.dao.get_temperature_history(sensor))
                 logger(FINEST, self.CLASS, "Response sent: name[{}], sensor[{}].".format(CONST_TEMP_HISTORY, sensor))
