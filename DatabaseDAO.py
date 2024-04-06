@@ -115,8 +115,6 @@ class DatabaseDAO:
 
         logger(FINER, self.CLASS, "Retrieved {} temperatures from the database.".format(len(temperature_history_json)))
 
-        # logger(FINEST, self.CLASS, "Returning: {}".format(temperature_history_json))
-
         data = ",".join(map(str, temperature_history_json))
 
         json_response = """
@@ -124,7 +122,7 @@ class DatabaseDAO:
         "sensor": "{}",
         "period_start": "{}",
         "period_end": "{}",
-        "measurements": [{}]
+        "data": [{}]
         """.format(
             CONST_TEMP_HISTORY,
             sensor,
