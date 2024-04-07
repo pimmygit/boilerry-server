@@ -17,9 +17,9 @@
 # Use, copying, and/or disclosure of the file is strictly
 # prohibited unless otherwise provided in the license agreement.
 ###################################################################
-from Common import get_temperature_now, logger
+from Common import read_temperature_now, logger
 from ConfigStore import ConfigStore
-from Constants import FINER
+from Constants import FINER, CONST_TEMP_HISTORY
 from Constants import CONST_THERMO_TEMPERATURE, CONST_THERMO_SWITCH, CONST_THERMO_RELAY, CONST_TEMP_NOW
 from DS18B20 import DS18B20
 from DatabaseDAO import DatabaseDAO
@@ -54,7 +54,8 @@ class Thermostat:
         self.thermo_switch = self.config.getBoilerryServer(CONST_THERMO_SWITCH, "1")
         self.thermo_manual_temperature = self.dao.get_thermostat_manual()
         self.thermo_relay = self.gpio.getRelayState()
-        self.temperature_now = get_temperature_now(self)
+        self.temperature_now = read_temperature_now(self)
+        self.temperature_history = self.dao.get_temperature_history()
 
     def get_thermo_switch(self):
         return self.thermo_switch
@@ -80,6 +81,13 @@ class Thermostat:
     def get_temperature_now(self):
         return self.temperature_now
 
-    def refresh_room_temperature(self):
+    def refresh_temperature_now(self):
         logger(FINER, self.CLASS, "Updating: {}.".format(CONST_TEMP_NOW))
-        self.temperature_now = get_temperature_now(self)
+        self.temperature_now = read_temperature_now(self)
+
+    def get_temperature_history(self):
+        return self.temperature_history
+
+    def refresh_temperature_history(self):
+        logger(FINER, self.CLASS, "Updating: {}.".format(CONST_TEMP_HISTORY))
+        self.temperature_history = self.dao.get_temperature_history()

@@ -77,7 +77,7 @@ class ThermoControl(threading.Thread):
             'Maintain the Always ON temperature'
             if thermo_switch == 1:
                 thermo_temperature = self.dao.get_thermostat_manual()
-                room_temperature = get_temperature_now(self)
+                room_temperature = read_temperature_now(self)
                 self.gpio.temperature_to_relay_state(thermo_temperature, room_temperature)
 
             'Force switch off the heating'

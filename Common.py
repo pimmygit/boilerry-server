@@ -9,7 +9,7 @@ from Constants import *
 from ConfigStore import ConfigStore
 
 
-def get_temperature_now(self, sensor: str = "sensor_1") -> float:
+def read_temperature_now(self, sensor: str = "sensor_1") -> float:
     """
     Retrieves the room temperature reading from the sensor
 

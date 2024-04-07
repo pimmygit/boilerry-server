@@ -36,38 +36,33 @@ from GPIO import GPIO
 from Thermostat import Thermostat
 
 
-def init_state_response():
+def init_state_response() -> json:
     """
     Name:     initResponse
     Desc:     Build the response JSON structure
               {
-                  "CONST_THERMO_STATE": "True",
+                  "CONST_THERMO_RELAY": "True",
                   "CONST_THERMO_SWITCH": "1",
                   "CONST_THERMO_TEMPERATURE": "0.0",
-                  "CONST_TEMPERATURE_ROOM": "0.0"
+                  "CONST_TEMP_NOW": "0.0",
+                  "CONST_TEMP_HISTORY": []
               }
     Param:    none
     Return:   none
     Modified: 07/12/2023
     """
-    json_data = "{" + """
+    json_response = "{" + """
     "{}": "True",
     "{}": "1",
     "{}": "0.0",
-    "{}": "0.0"
+    "{}": "0.0",
+    "{}": []
     """.format(
         CONST_THERMO_RELAY,
         CONST_THERMO_SWITCH,
         CONST_THERMO_TEMPERATURE,
-        CONST_TEMP_NOW
-    ) + "}"
-
-    json_response = "{" + """
-    "name": "{}",
-    "data": {}
-    """.format(
-        CONST_THERMO_STATE,
-        json_data
+        CONST_TEMP_NOW,
+        CONST_TEMP_HISTORY
     ) + "}"
 
     return json.loads(json_response)
@@ -183,7 +178,7 @@ class AndroidServer:
 
         return True
 
-    def build_state_response(self, thermostat):
+    def build_state_response(self, thermostat) -> json:
         """
         Name:       build_state_response()
         Desc:       Checks that all expected elents in the JSON request are present
@@ -195,26 +190,39 @@ class AndroidServer:
         json_response = init_state_response()
 
         # Get the thermostat state
-        json_response["data"][CONST_THERMO_RELAY] = thermostat.get_thermo_state()
+        json_response[CONST_THERMO_RELAY] = str(thermostat.get_thermo_state())
         logger(FINEST, self.CLASS, "State->{}: {}".format(
-            CONST_THERMO_RELAY, str(json_response["data"][CONST_THERMO_RELAY]).lower()))
+            CONST_THERMO_RELAY, str(json_response[CONST_THERMO_RELAY]).lower()))
 
         # Get the thermostat switch position
-        json_response["data"][CONST_THERMO_SWITCH] = thermostat.get_thermo_switch()
+        json_response[CONST_THERMO_SWITCH] = str(thermostat.get_thermo_switch())
         logger(FINEST, self.CLASS, "State->{}: {}".format(
-            CONST_THERMO_SWITCH, json_response["data"][CONST_THERMO_SWITCH]))
+            CONST_THERMO_SWITCH, json_response[CONST_THERMO_SWITCH]))
 
         # Get the thermostat temperature value for the Always ON setting (timeStart="00:00" and timeEnd="00:00":
-        json_response["data"][CONST_THERMO_TEMPERATURE] = thermostat.get_thermo_manual_temperature()
+        json_response[CONST_THERMO_TEMPERATURE] = str(thermostat.get_thermo_manual_temperature())
         logger(FINEST, self.CLASS,
                "DAO result: thermostat->manual_temp[{}]".format(thermostat.get_thermo_manual_temperature()))
 
         # Get the current room temperature
-        json_response["data"][CONST_TEMP_NOW] = thermostat.get_temperature_now()
+        json_response[CONST_TEMP_NOW] = str(thermostat.get_temperature_now())
         logger(FINEST, self.CLASS, "State->{}: {}".
-               format(CONST_TEMP_NOW, json_response["data"][CONST_TEMP_NOW]))
+               format(CONST_TEMP_NOW, json_response[CONST_TEMP_NOW]))
 
-        logger(FINER, self.CLASS, "Sending response: {}".format(json.dumps(json_response)))
+        # Get the historical room temperature
+        json_response[CONST_TEMP_HISTORY] = thermostat.get_temperature_history()
+
+        # Normalise the JSON format as it comes messy after adding the JSON Array
+        json_response = json.dumps(json_response)
+        json_response = json_response.replace("\\", "")
+        json_response = json_response.replace("\"[", "[")
+        json_response = json_response.replace("]\"", "]")
+        json_response = json.loads(json_response)
+
+        # Logging up to the first couple of historical temperatures as they usually come in hundreds (~900).
+        response_log = (json.dumps(json_response)[:300] + '..(truncated)') if len(json.dumps(json_response)) > 300 else json.dumps(json_response)
+        logger(FINER, self.CLASS, "Sending response: {}".format(response_log))
+
         return json_response
 
     async def process_request(self, websocket: websockets, path):
@@ -260,12 +268,7 @@ class AndroidServer:
             # After changing the relay state, we must update the Thermostat object
             thermostat.refresh_thermo_state()
 
-            if json_request["name"] == CONST_TEMP_HISTORY and json_request["action"] == "get":
-                sensor = json_request["value"]
-                await websocket.send(self.dao.get_temperature_history(sensor))
-                logger(FINEST, self.CLASS, "Response sent: name[{}], sensor[{}].".format(CONST_TEMP_HISTORY, sensor))
-            else:
-                # Regardless of the request/command that was sent to the server (us),
-                # we respond with the full state of the system
-                await websocket.send(json.dumps(self.build_state_response(thermostat)))
-                logger(FINEST, self.CLASS, "Response sent: {}".format(CONST_THERMO_RELAY))
+            # Regardless of the request/command that was sent to the server (us),
+            # we respond with the full state of the system
+            await websocket.send(json.dumps(self.build_state_response(thermostat)))
+            logger(FINEST, self.CLASS, "Response sent: {}".format(CONST_THERMO_STATE))

@@ -17,13 +17,12 @@
 # Use, copying, and/or disclosure of the file is strictly
 # prohibited unless otherwise provided in the license agreement.
 ###################################################################
-import datetime
-from json.decoder import JSONObject, JSONArray
+import json
 
 import MySQLdb as SQL
 
 from Common import logger, timestampToDatetime, validateDateTime
-from Constants import CRITICAL, WARNING, FINE, FINER, FINEST, CONST_TEMP_HISTORY
+from Constants import CRITICAL, WARNING, FINE, FINER, FINEST
 from Constants import DB_HOST, DB_PORT, DB_NAME, DB_USER, DB_PASS
 
 
@@ -63,7 +62,7 @@ class DatabaseDAO:
         self.db_conn.ping(True)
         return self.db_conn.cursor()
 
-    def get_temperature_history(self, sensor: str, period_start: str = None, period_end: str = None) -> str:
+    def get_temperature_history(self, sensor: str = "sensor_1", period_start: str = None, period_end: str = None) -> json:
         """
         Function to retrieve the temperature for the Always ON thermostat setting.
 
@@ -72,7 +71,7 @@ class DatabaseDAO:
             period_start:   Timestamp in the format "dd/mm/yyyy hh/mm"
             period_end:     Timestamp in the format "dd/mm/yyyy hh/mm"
 
-        Returns:            The temperature for Always ON thermostat setting.
+        Returns:            The temperature readings for the past period as a JSON object
         Created:            31/03/2024
         """
         if not period_start or not validateDateTime(period_start):
@@ -105,33 +104,17 @@ class DatabaseDAO:
         cursor.execute(query)
         logger(FINEST, self.CLASS, "SQL executed.")
 
-        temperature_history_json = []
+        temperature_history_data = []
         for result in cursor:
-            temperature_history_json.append({
+            temperature_history_data.append({
                 "datetime": "{}".format(result[2].timestamp()),
                 "temperature": "{}".format(result[0]),
                 "unit": "{}".format(result[1])
             })
 
-        logger(FINER, self.CLASS, "Retrieved {} temperatures from the database.".format(len(temperature_history_json)))
+        logger(FINER, self.CLASS, "Retrieved {} temperatures from the database.".format(len(temperature_history_data)))
 
-        data = ",".join(map(str, temperature_history_json))
-
-        json_response = """
-        "name": "{}",
-        "sensor": "{}",
-        "period_start": "{}",
-        "period_end": "{}",
-        "data": [{}]
-        """.format(
-            CONST_TEMP_HISTORY,
-            sensor,
-            period_start,
-            period_end,
-            data
-        )
-
-        return "{" + json_response + "}"
+        return json.dumps(temperature_history_data)
 
     def save_temperature(self, sensor: str, unit: str, temperature: float):
         """
