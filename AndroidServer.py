@@ -149,7 +149,9 @@ class AndroidServer:
             11/Dec/2023
         """
         try:
-            if not json_request["name"] == CONST_THERMO_STATE and not json_request["name"] == CONST_TEMP_HISTORY:
+            if not json_request["name"] == CONST_THERMO_STATE and \
+                    not json_request["name"] == CONST_TEMP_HISTORY and \
+                    not json_request["name"] == CONST_THERMO_TEMPERATURE:
                 logger(WARNING, self.CLASS, "Invalid JSON: Unrecognised element name: {}".format(json_request["name"]))
                 return False
         except KeyError:

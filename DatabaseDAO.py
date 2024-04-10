@@ -76,7 +76,7 @@ class DatabaseDAO:
         """
         if not period_start or not validateDateTime(period_start):
             logger(FINER, self.CLASS, "Retrieving historical temperature failed to recognise start period: {}".format(period_start))
-            period_start = "NOW() - INTERVAL 1 WEEK"
+            period_start = "NOW() - INTERVAL 2 DAY"
         else:
             period_start = "\"{}\"".format(period_start)
 
