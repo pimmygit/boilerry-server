@@ -151,7 +151,8 @@ class AndroidServer:
         try:
             if not json_request["name"] == CONST_THERMO_STATE and \
                     not json_request["name"] == CONST_TEMP_HISTORY and \
-                    not json_request["name"] == CONST_THERMO_TEMPERATURE:
+                    not json_request["name"] == CONST_THERMO_TEMPERATURE and \
+                    not json_request["name"] == CONST_THERMO_SWITCH:
                 logger(WARNING, self.CLASS, "Invalid JSON: Unrecognised element name: {}".format(json_request["name"]))
                 return False
         except KeyError:
