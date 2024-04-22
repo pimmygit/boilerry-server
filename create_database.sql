@@ -23,15 +23,29 @@ created			TIMESTAMP NOT NULL DEFAULT NOW(),	# Time of account creation
 modified		TIMESTAMP				            # Time of account's last modification
 );
 #
+# Name: weather
+# Desc: Contains the weather summary for a given datetime
+# Last: 18.04.2024
+#
+CREATE TABLE IF NOT EXISTS weather(
+datetime		    TIMESTAMP NOT NULL DEFAULT NOW(),	# Date and time when the measurement was taken
+unit_speed          VARCHAR(3) NOT NULL DEFAULT 'mph',	# Wind speed unit - kph/mph
+unit_temperature    VARCHAR(1) NOT NULL DEFAULT 'C',	# Temperature unit - C/F
+temperature		    FLOAT,					            # Measured temperature
+windchill   	    FLOAT,   					        # Windchill
+wspd                FLOAT                               # Wind speed
+);
+#
 # Name: temperature
 # Desc: Contains temperature measurements
 # Last: 21.01.2018
 #
 CREATE TABLE IF NOT EXISTS temperature(
 sensor			VARCHAR(20) NOT NULL,			    # ID of the sensor
-unit			VARCHAR(5) NOT NULL DEFAULT 'C',	# Measurement unit - C/F
-value			FLOAT,					            # Measured temperature
-datetime		TIMESTAMP NOT NULL DEFAULT NOW()	# Time when the measurement was taken
+datetime		TIMESTAMP NOT NULL DEFAULT NOW(),	# Time when the measurement was taken
+unit			VARCHAR(1) NOT NULL DEFAULT 'C',	# Measurement unit - C/F
+temperature		FLOAT,					            # Measured temperature
+thermo_state	TINYINT(1)					        # Is the boiler heating element On/Off - 0/1
 );
 #
 # Name: thermostat
@@ -52,25 +66,4 @@ CREATE TABLE IF NOT EXISTS presence(
 sensor			VARCHAR(20) NOT NULL,		        # ID of the sensor
 datetimeFirst		TIMESTAMP,				        # Time when the first motion was detected
 datetimeLast		TIMESTAMP				        # Time when the measurement was taken
-);
-#
-# Name: settings
-# Desc: Contains various runtime settings
-# Last: 21.01.2018
-#
-CREATE TABLE IF NOT EXISTS settings(
-thermoSwitch            INTEGER NOT NULL DEFAULT 1,     # 0: Off, 1: Always On, 2: Timer, 3: ML Predictive
-intervalPresence	    INTEGER NOT NULL DEFAULT 600, 	# Time to wait in seconds before deciding the occupant [is not in]|[has left] the room
-intervalTemperature	    INTEGER NOT NULL DEFAULT 600	# Time to wait in seconds before taking another temperature measurement
-thermoUnits             VARCHAR(1) NOT NULL DEFAULT "C",
-thermoPeriod            INT NOT NULL DEFAULT 600,
-thermoTimeout           INT NOT NULL DEFAULT 30,
-thermoDayIn             INT NOT NULL DEFAULT 21,
-thermoDayOut            INT NOT NULL DEFAULT 21,
-thermoNightIn           INT NOT NULL DEFAULT 90,
-thermoNightOut          INT NOT NULL DEFAULT 90,
-predictiveStart         INT NOT NULL DEFAULT 1800,
-predictiveStop          INT NOT NULL DEFAULT 1800,
-motionAllowedSilence    INT NOT NULL DEFAULT 1800,
-motionTimeBetweemWrites INT NOT NULL DEFAULT 600
 );

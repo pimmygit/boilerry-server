@@ -25,7 +25,7 @@ from json import JSONDecodeError
 
 import websockets
 
-from Common import logger
+from Common import logger, retrieve_weather_history
 from ConfigStore import ConfigStore
 from Constants import CONST_THERMO_STATE, CONST_TEMP_HISTORY
 from Constants import CONST_THERMO_RELAY, CONST_THERMO_TEMPERATURE, CONST_TEMP_NOW, CONST_THERMO_SWITCH
@@ -270,6 +270,9 @@ class AndroidServer:
                                                  thermostat.get_temperature_now())
             # After changing the relay state, we must update the Thermostat object
             thermostat.refresh_thermo_state()
+
+            # Retrieve and save the latest missing weather information.
+            retrieve_weather_history(self)
 
             # Regardless of the request/command that was sent to the server (us),
             # we respond with the full state of the system

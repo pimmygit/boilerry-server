@@ -97,6 +97,26 @@ class ConfigStore(metaclass=Singleton):
         self.readConfig()
         return self.config['logging'].get("file", "stdout")
 
+    def getMetStation(self, property_name: str) -> str:
+        """
+        Retrieves meteorological station API settings from the INI config file.
+
+        Args:
+            property_name: The name of the property defined in the INI config file.
+
+        Return:
+            str: The property value stored in the INI config file. There are no default values.
+
+        Created: [18.04.2024]
+        """
+        self.readConfig()
+        property_value = self.config['weather'].get(property_name.lower())
+
+        if property_value and property_value != "":
+            return property_value
+
+        return ""
+
     def getSensor(self, property_name: str) -> str:
         """
         Retrieves temperature sensor properties from the INI config file. The temperature sensor properties are

@@ -18,6 +18,7 @@
 # prohibited unless otherwise provided in the license agreement.
 ###################################################################
 import json
+from typing import List, Tuple
 
 import MySQLdb as SQL
 
@@ -55,12 +56,55 @@ class DatabaseDAO:
                        "Failed to connect to host[{}], port[{}], name[{}], user[{}], pass[****]:"
                        .format(DB_HOST, DB_PORT, DB_NAME, DB_USER))
                 self.db_conn.close()
-        else:
-            logger(FINEST, self.CLASS, "Reusing connection..")
+        # else:
+        #    logger(FINEST, self.CLASS, "Reusing connection..")
 
-        logger(FINEST, self.CLASS, "Returning cursor..")
+        # logger(FINEST, self.CLASS, "Returning cursor..")
         self.db_conn.ping(True)
         return self.db_conn.cursor()
+
+    def get_weather_last_record_datetime(self) -> float:
+        """
+        Function to retrieve the date time of when the last weather record was taken.
+
+        Args:
+        Returns:            The datetime of when the last weather record was taken.
+        Created:            18/04/2024
+        """
+        query = "SELECT datetime FROM weather ORDER BY datetime DESC LIMIT 1"
+
+        logger(FINEST, self.CLASS, "SQL: {}.".format(query))
+
+        cursor = self.get_cursor()
+        cursor.execute(query)
+        logger(FINEST, self.CLASS, "SQL executed.")
+
+        for result in cursor:
+            logger(FINER, self.CLASS, "Retrieved datetime of the last weather record: {}".format(
+                timestampToDatetime(int(result[0].timestamp()))))
+            return result[0].timestamp()
+
+        return 0.0
+
+    def store_weather_history(self, weather_history: List[Tuple[str, str, str, float, float, float]]) -> None:
+        """
+        Function to retrieve the date time of when the last weather record was taken.
+
+        Args:
+            weather_history:    List of Tuples containing weather measurements.
+        Returns:
+            None
+        Created:
+            18/04/2024
+        """
+        logger(FINE, self.CLASS, "Saving {} weather history measurements.".format(len(weather_history)))
+
+        query = "INSERT INTO weather (datetime, unit_speed, unit_temperature, temperature, windchill, wspd) VALUES (%s, %s, %s, %s, %s, %s)"
+
+        for measurement in weather_history:
+            self.get_cursor().execute(query, measurement)
+
+        logger(FINEST, self.CLASS, "SQL executed.")
 
     def get_temperature_history(self, sensor: str = "sensor_1", period_start: str = None, period_end: str = None) -> json:
         """
