@@ -57,7 +57,7 @@ class DS18B20:
 
         return file_lines
 
-    def getTemp(self, sensor_id: str, timeout: int, units: str) -> float:
+    def getTemp(self, sensor_id: str, timeout: int, temp_units: str = 'C') -> float:
         """
         Function to parse the content of the file line by line and return the temperature:
             - First line gives status for successful read by the last three chars (YES).
@@ -66,13 +66,13 @@ class DS18B20:
         Args:
             sensor_id:  Sensor to read
             timeout:    Timeout in seconds before giving up to read the temperature
-            units:      Celsius or Fahrenheit. Default: Celsius
+            temp_units: [C]elsius or [F]ahrenheit. Default: [C]
 
         Returns:
             The measured temperature as a float value
         """
-        logger(FINER, self.CLASS, "Reading sensor {} using metrics in {} and timeout of {}.".format(
-            sensor_id, units, timeout))
+        logger(FINER, self.CLASS, "Reading sensor {} using [{}] metrics and timeout of {} seconds.".format(
+            sensor_id, temp_units, timeout))
 
         timeout = timeout * 2
         curr_run = 0
@@ -99,7 +99,7 @@ class DS18B20:
         else:
             thermo_string = 0.0
 
-        if units == "F":
+        if temp_units == "F":
             temperature = float(thermo_string) * 9.0 / 5.0 + 32.0
         else:
             temperature = float(thermo_string) / 1000.0

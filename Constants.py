@@ -53,12 +53,3 @@ CONST_TEMP_RECORD_INTERVAL = "temp_record_interval"
 CONST_TEMP_NOW = "temp_now"
 CONST_TEMP_HISTORY = "temp_history"
 CONST_TEMP_UNITS = "temp_units"
-
-# Temperature history
-CONST_TEMP_HIST_DT = "datetimeStr"
-CONST_TEMP_HIST_TEMP = "temp"
-CONST_TEMP_HIST_TEMP = "temp"
-CONST_TEMP_HIST_TEMP = "temp"
-CONST_TEMP_HIST_CHILL = "windchill"
-CONST_TEMP_HIST_WIND = "wspd"
-

@@ -45,7 +45,7 @@ sensor			VARCHAR(20) NOT NULL,			    # ID of the sensor
 datetime		TIMESTAMP NOT NULL DEFAULT NOW(),	# Time when the measurement was taken
 unit			VARCHAR(1) NOT NULL DEFAULT 'C',	# Measurement unit - C/F
 temperature		FLOAT,					            # Measured temperature
-thermo_state	TINYINT(1)					        # Is the boiler heating element On/Off - 0/1
+time_state_on   SMALLINT    				        # Shows the time in seconds for the interval between this and the previous reading, for which the boiler was heating.
 );
 #
 # Name: thermostat
@@ -63,7 +63,7 @@ timeEnd 		VARCHAR(5) NOT NULL,	            # End of the time period in the forma
 # Last: 21.01.2018
 #
 CREATE TABLE IF NOT EXISTS presence(
-sensor			VARCHAR(20) NOT NULL,		        # ID of the sensor
+sensor			    VARCHAR(20) NOT NULL,           # ID of the sensor
 datetimeFirst		TIMESTAMP,				        # Time when the first motion was detected
 datetimeLast		TIMESTAMP				        # Time when the measurement was taken
 );

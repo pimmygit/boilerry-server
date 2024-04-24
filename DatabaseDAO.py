@@ -160,26 +160,24 @@ class DatabaseDAO:
 
         return json.dumps(temperature_history_data)
 
-    def save_temperature(self, sensor: str, unit: str, temperature: float):
+    def save_temperature(self, sensor: str, unit: str, temperature: float, seconds_heating_on: int):
         """
         Function to save temperature reading from the sensor.
 
         Args:
-            sensor:         Id of the sensor which read the temperature.
-            unit:           Metrics of the measurement.
-            temperature:    Value of the measurement.
+            sensor:             ID of the sensor which read the temperature.
+            unit:               Metrics of the measurement.
+            temperature:        Value of the measurement.
+            seconds_heating_on: Time in seconds for which the boiler was heating during the past reading period.
 
         Returns:
             none
         """
-        logger(FINE, self.CLASS, "Saving temperature measurement: sensor[{}], unit[{}], temperature[{}]."
-               .format(sensor, unit, temperature))
+        logger(FINE, self.CLASS, "Saving temperature measurement: sensor[{}], unit[{}], temperature[{}], time_state_on[{}]."
+               .format(sensor, unit, temperature, seconds_heating_on))
 
-        query = "INSERT INTO temperature (sensor, unit, value) VALUES (%s, %s, %s)"
-        data = (sensor, unit, temperature)
-
-        logger(FINEST, self.CLASS, "SQL: {} -> sensor[{}], unit[{}], temperature[{}]."
-               .format(query, sensor, unit, temperature))
+        query = "INSERT INTO temperature (sensor, unit, value, time_state_on) VALUES (%s, %s, %s, %s)"
+        data = (sensor, unit, temperature, seconds_heating_on)
 
         self.get_cursor().execute(query, data)
         logger(FINEST, self.CLASS, "SQL executed.")

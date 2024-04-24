@@ -6,7 +6,7 @@ import requests
 
 from datetime import timezone, datetime
 from dateutil.parser import parse
-from time import gmtime, strftime
+from time import gmtime, strftime, sleep
 
 from Constants import *
 from ConfigStore import ConfigStore
@@ -181,6 +181,24 @@ def timestampToDatetime(timestamp: int) -> str:
     database_time = local_time.strftime("%Y-%m-%dT%H:%M:%S")
     # logger(FINER, "Common", "UNIX timestamp[{}] converted to [{}].".format(timestamp, database_time))
     return database_time
+
+
+def sleep_to_next_minute(sleep_interval: int) -> None:
+    """
+    Ensures the sleeping ends at the first second of the new minute. For example, if we start sleeping for a minute
+    at 18:47:55, we will end sleeping at 18:48:00. Yes we slept less than 60 seconds, but we woke up at the beginning
+    of the next minute.
+    This is to ensure that the MOD calculation for when to take recording is not mislead. I.e. We run the loop every
+    minute, while the processing may take up to a second. If we start processing at 14:00:00, by the time Close to the end of the hour, we could easily check if
+    we need to record the temperature 1 second later, not detecting that it was that minute when it should have happened.
+
+    Args:
+        sleep_interval:     Time in seconds to sleep
+    """
+    sleep_start_minute = getCurrentTimeMinutes()
+
+    while (sleep_start_minute + sleep_interval - 1) == getCurrentTimeMinutes():
+        sleep(1)
 
 
 def logger(level: int, caller: str, message: str):

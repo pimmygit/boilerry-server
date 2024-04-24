@@ -56,8 +56,9 @@ class ThermoControl(threading.Thread):
         self.gpio = gpio
         self.thermo_sensor = sensor
 
+        self.thread_sleep_minutes = 1
         self.running = True
-        self.THERMOSTATS = []
+        self.seconds_heating_on = 0
 
     def run(self):
         """
@@ -70,6 +71,9 @@ class ThermoControl(threading.Thread):
             thermo_switch = int(self.config.getBoilerryServer(CONST_THERMO_SWITCH, 1))
 
             logger(FINEST, self.CLASS, "Determining the 'Heating state' according to settings & environment..")
+
+            if thermo_switch == 3:
+                'Do the predictive magic'
 
             if thermo_switch == 2:
                 'Do the timer magic'
@@ -86,38 +90,54 @@ class ThermoControl(threading.Thread):
                 self.gpio.setRelayState(HEATING_STATE_OFF)
                 # self.stop()
 
-            '''
-            Make a record of the current temperature (if its time to do that).
-            For better presentation, the time when the temperature measurement it taken, is on the top of the hour,
-            divided by the period specified in the property.
-            '''
-            try:
-                thermo_record_interval = int(self.config.getBoilerryServer(CONST_TEMP_RECORD_INTERVAL, "10"))
-            except ValueError:
-                thermo_record_interval = 10
-                logger(FINEST, self.CLASS, "Temperature recording property '{}' is not an integer: {}.".format(
-                    CONST_TEMP_RECORD_INTERVAL, self.config.getBoilerryServer(CONST_TEMP_RECORD_INTERVAL, "10")
-                ))
+            self.record_temperature("sensor_1")
 
-            # Let's do some checks and let the user know if the settings look abnormal
-            if thermo_record_interval <= 0:
-                logger(FINEST, self.CLASS, "Recording temperature is OFF.")
-            elif getCurrentTimeMinutes() % thermo_record_interval == 0:
-                logger(FINEST, self.CLASS, "Recording temperature current_minutes[{}], interval[{}].".format(
-                    getCurrentTimeMinutes(), self.config.getBoilerryServer(CONST_TEMP_RECORD_INTERVAL, "10")
-                ))
-                sensor = "sensor_1"
-                self.dao.save_temperature(
-                    sensor,
-                    self.config.getBoilerryServer(CONST_TEMP_UNITS, "C"),
-                    self.thermo_sensor.getTemp(
-                        self.config.getSensor(sensor + "_id"),
-                        int(self.config.getSensor(sensor + "_timeout")),
-                        self.config.getBoilerryServer(CONST_TEMP_UNITS, "C"),
-                    )
-                )
+            # We may sleep less than the exact seconds representation of the minutes,
+            # but we will always wake up at the start of the minute.
+            sleep_to_next_minute(self.thread_sleep_minutes)
 
-            sleep(60)
+    def record_temperature(self, sensor: str):
+        """
+        Make a record of the current temperature (if it time to do that).
+        For better presentation, the time when the temperature measurement is taken, is on the top of the hour,
+        divided by the period specified in the property.
+        """
+        try:
+            thermo_record_interval = int(self.config.getBoilerryServer(CONST_TEMP_RECORD_INTERVAL, "30"))
+        except ValueError:
+            thermo_record_interval = 30
+            logger(FINEST, self.CLASS, "Recording temperature property '{}' is not an integer: {}.".format(
+                CONST_TEMP_RECORD_INTERVAL, self.config.getBoilerryServer(CONST_TEMP_RECORD_INTERVAL, "30")
+            ))
+
+        # Let's do some checks and let the user know if the settings look abnormal
+        if thermo_record_interval <= 0:
+            logger(FINER, self.CLASS, "Recording temperature is OFF.")
+        elif getCurrentTimeMinutes() % thermo_record_interval == 0:
+            logger(FINER, self.CLASS, "Recording temperature: current_minutes[{}] fits the interval[{}].".format(
+                getCurrentTimeMinutes(), self.config.getBoilerryServer(CONST_TEMP_RECORD_INTERVAL, "30")
+            ))
+            self.dao.save_temperature(
+                sensor,
+                self.config.getBoilerryServer(CONST_TEMP_UNITS, "C"),
+                self.thermo_sensor.getTemp(
+                    self.config.getSensor(sensor + "_id"),
+                    int(self.config.getSensor(sensor + "_timeout")),
+                    self.config.getBoilerryServer(CONST_TEMP_UNITS, "C")
+                ),
+                self.seconds_heating_on
+            )
+
+            # As soon as we write down the data, we start counting the seconds again
+            self.seconds_heating_on = 0
+        else:
+            logger(FINEST, self.CLASS, "Recording temperature is not yet to happen: current_minutes[{}] is not aligned with interval[{}].".format(
+                getCurrentTimeMinutes(), self.config.getBoilerryServer(CONST_TEMP_RECORD_INTERVAL, "30")
+            ))
+
+        # Calculate the time (in seconds) the heating element is ON (consuming energy)
+        if self.gpio.getRelayState():
+            self.seconds_heating_on = self.seconds_heating_on + (self.thread_sleep_minutes * 60)
 
     def stop(self):
         """
