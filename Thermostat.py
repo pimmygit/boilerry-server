@@ -51,11 +51,18 @@ class Thermostat:
 
         logger(FINER, self.CLASS, "Initialising current state.")
 
+        self.thermo_relay = self.gpio.getRelayState()
         self.thermo_switch = self.config.getBoilerryServer(CONST_THERMO_SWITCH, "1")
         self.thermo_manual_temperature = self.dao.get_thermostat_manual()
-        self.thermo_relay = self.gpio.getRelayState()
         self.temperature_now = read_temperature_now(self)
         self.temperature_history = self.dao.get_temperature_history()
+
+    def get_thermo_state(self):
+        return self.thermo_relay
+
+    def refresh_thermo_state(self):
+        logger(FINER, self.CLASS, "Updating: {}.".format(CONST_THERMO_RELAY))
+        self.thermo_relay = self.gpio.getRelayState()
 
     def get_thermo_switch(self):
         return self.thermo_switch
@@ -70,13 +77,6 @@ class Thermostat:
     def refresh_thermo_manual_temperature(self):
         logger(FINER, self.CLASS, "Updating: {}.".format(CONST_THERMO_TEMPERATURE))
         self.thermo_manual_temperature = self.dao.get_thermostat_manual()
-
-    def get_thermo_state(self):
-        return self.thermo_relay
-
-    def refresh_thermo_state(self):
-        logger(FINER, self.CLASS, "Updating: {}.".format(CONST_THERMO_RELAY))
-        self.thermo_relay = self.gpio.getRelayState()
 
     def get_temperature_now(self):
         return self.temperature_now

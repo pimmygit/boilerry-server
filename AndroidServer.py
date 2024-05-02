@@ -224,7 +224,7 @@ class AndroidServer:
 
         # Logging up to the first couple of historical temperatures as they usually come in hundreds (~900).
         response_log = (json.dumps(json_response)[:300] + '..(truncated)') if len(json.dumps(json_response)) > 300 else json.dumps(json_response)
-        logger(FINER, self.CLASS, "Sending response: {}".format(response_log))
+        logger(FINEST, self.CLASS, "Sending response: size[{}]: {}".format(len(json.dumps(json_response)), response_log))
 
         return json_response
 
@@ -246,35 +246,44 @@ class AndroidServer:
             if json_request is None or not self.validate_request(json_request):
                 return None
 
+            # Upon receiving any request, tobe up to date with the latest weather history,
+            # we retrieve and save the latest missing weather information.
+            retrieve_weather_history(self)
+
             logger(FINE, self.CLASS, "Processing request: {}".format(json.dumps(json_request)))
 
+            # Based on the received request, we will update the Thermostat object accordingly
+            # build and send the response back to the client.
             if json_request["name"] == CONST_THERMO_SWITCH:
                 self.config.setBoilerryServer(CONST_THERMO_SWITCH, str(json_request["value"]))
-                """
+
                 if int(json_request["value"]) > 0:
+                    # Process the newly received settings immediately
+                    self.gpio.temperature_to_relay_state(thermostat.get_thermo_manual_temperature(),
+                                                         thermostat.get_temperature_now())
+                    """
                     if not self.thermostat.is_alive():
                         self.thermostat.start()
+                    """
                 else:
-                    self.thermostat.stop()
-                """
+                    # self.thermostat.stop()
+                    self.gpio.setRelayState(False)
+
             # At some point, we would be able to set temperature for time slots
             # Time slot 00:00-00:00 is the temperature for the "Always On" state of the master switch.
             if json_request["name"] == CONST_THERMO_TEMPERATURE:
                 self.dao.set_thermostat(json_request["value"], "00:00", "00:00")
 
-            # Create the thermostat object with the latest from the DB and sensors
+                # Process the newly received settings immediately
+                self.gpio.temperature_to_relay_state(thermostat.get_thermo_manual_temperature(),
+                                                     thermostat.get_temperature_now())
+
+            # Before building the request, we create the Thermostat object which will initialise
+            # with the latest state known to the server, as well as querying the DB and sensors.
+            # The Thermostat object is sort of a cache, helping out not to retrieve data too often.
             thermostat = Thermostat(self.dao, self.gpio, self.thermo_sensor)
-
-            # Process the newly received settings immediately
-            self.gpio.temperature_to_relay_state(thermostat.get_thermo_manual_temperature(),
-                                                 thermostat.get_temperature_now())
-            # After changing the relay state, we must update the Thermostat object
-            thermostat.refresh_thermo_state()
-
-            # Retrieve and save the latest missing weather information.
-            retrieve_weather_history(self)
 
             # Regardless of the request/command that was sent to the server (us),
             # we respond with the full state of the system
             await websocket.send(json.dumps(self.build_state_response(thermostat)))
-            logger(FINEST, self.CLASS, "Response sent: {}".format(CONST_THERMO_STATE))
+            logger(FINE, self.CLASS, "Response sent: {}".format(CONST_THERMO_STATE))

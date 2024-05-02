@@ -80,7 +80,7 @@ class GPIO:
                            self.config.getGpioPin("relay_2"), relay_state_2))
             return bool(HEATING_STATE_ON)
 
-    def setRelayState(self, state: int):
+    def setRelayState(self, state: bool):
         """
         Function to set the state of the relays:
             HEATING_MODE_ON    -> GPIO_PIN_RELAY_1[1]
