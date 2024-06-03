@@ -1,7 +1,4 @@
 #!/usr/bin/python
-import json
-from typing import Tuple
-
 import requests
 
 from datetime import timezone, datetime
@@ -117,12 +114,14 @@ def retrieve_weather_history(self) -> None:
             weather_wind = 0.0
 
         weather_history.append((
-            weather_datetime,
             weather_unit_speed,
             weather_unit_temp,
             float(weather_temp),
             float(weather_chill),
-            float(weather_wind)
+            float(weather_wind),
+            '%d/%m/%Y %H',
+            datetime.strptime(''.join(weather_datetime.rsplit(':', 1)), '%Y-%m-%dT%H:%M:%S%z'),
+            '%d/%m/%Y %H'
         ))
 
     self.dao.store_weather_history(weather_history)

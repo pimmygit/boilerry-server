@@ -118,14 +118,13 @@ class ThermoControl(threading.Thread):
                 getCurrentTimeMinutes(), self.config.getBoilerryServer(CONST_TEMP_RECORD_INTERVAL, "30")
             ))
             self.dao.save_temperature(
-                sensor,
+                self.seconds_heating_on,
                 self.config.getBoilerryServer(CONST_TEMP_UNITS, "C"),
                 self.thermo_sensor.getTemp(
                     self.config.getSensor(sensor + "_id"),
                     int(self.config.getSensor(sensor + "_timeout")),
                     self.config.getBoilerryServer(CONST_TEMP_UNITS, "C")
-                ),
-                self.seconds_heating_on
+                )
             )
 
             # As soon as we write down the data, we start counting the seconds again

@@ -1,5 +1,4 @@
 USE boilerry;
-
 #
 # Name: users
 # Desc: Contains user accounts
@@ -23,29 +22,21 @@ created			TIMESTAMP NOT NULL DEFAULT NOW(),	# Time of account creation
 modified		TIMESTAMP				            # Time of account's last modification
 );
 #
-# Name: weather
-# Desc: Contains the weather summary for a given datetime
-# Last: 18.04.2024
-#
-CREATE TABLE IF NOT EXISTS weather(
-datetime		    TIMESTAMP NOT NULL DEFAULT NOW(),	# Date and time when the measurement was taken
-unit_speed          VARCHAR(3) NOT NULL DEFAULT 'mph',	# Wind speed unit - kph/mph
-unit_temperature    VARCHAR(1) NOT NULL DEFAULT 'C',	# Temperature unit - C/F
-temperature		    FLOAT,					            # Measured temperature
-windchill   	    FLOAT,   					        # Windchill
-wspd                FLOAT                               # Wind speed
-);
-#
 # Name: temperature
 # Desc: Contains temperature measurements
-# Last: 21.01.2018
+# Last: 03.06.2024
 #
 CREATE TABLE IF NOT EXISTS temperature(
-sensor			VARCHAR(20) NOT NULL,			    # ID of the sensor
-datetime		TIMESTAMP NOT NULL DEFAULT NOW(),	# Time when the measurement was taken
-unit			VARCHAR(1) NOT NULL DEFAULT 'C',	# Measurement unit - C/F
-temperature		FLOAT,					            # Measured temperature
-time_state_on   SMALLINT    				        # Shows the time in seconds for the interval between this and the previous reading, for which the boiler was heating.
+datetime		    TIMESTAMP NOT NULL DEFAULT NOW(),	# Date and time when the measurement was taken
+time_state_on       SMALLINT,    				        # Shows the time in seconds for the interval between this and the previous reading, for which the boiler was heating.
+unit_speed          VARCHAR(3) NOT NULL DEFAULT 'mph',	# Wind speed unit - kph/mph
+unit_temperature    VARCHAR(1) NOT NULL DEFAULT 'C',	# Temperature unit - C/F
+temperature		    FLOAT,                              # Measured temperature outside
+windchill   	    FLOAT,                              # Windchill
+wspd                FLOAT,                              # Wind speed
+sensor_1            FLOAT,                              # Measured temperature for the given sensor
+sensor_2            FLOAT,                              # Measured temperature for the given sensor
+sensor_3            FLOAT                               # Measured temperature for the given sensor
 );
 #
 # Name: thermostat

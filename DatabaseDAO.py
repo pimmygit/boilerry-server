@@ -86,9 +86,13 @@ class DatabaseDAO:
 
         return 0.0
 
-    def store_weather_history(self, weather_history: List[Tuple[str, str, str, float, float, float]]) -> None:
+    def store_weather_history(self, weather_history: List[Tuple[str, str, float, float, float, str]]) -> None:
         """
-        Function to retrieve the date time of when the last weather record was taken.
+        Function to populate all property temperature readings with historical weather data.
+
+        The weather history comes at an hourly period, while the property temperature is recorded more often.
+        Therefore, we would end up with duplicate weather records for a bunch of property temperature readings
+        that fall within the same hour... hence the 'strange' date comparison in the SQL statement here.
 
         Args:
             weather_history:    List of Tuples containing weather measurements.
@@ -99,19 +103,20 @@ class DatabaseDAO:
         """
         logger(FINE, self.CLASS, "Saving {} weather history measurements.".format(len(weather_history)))
 
-        query = "INSERT INTO weather (datetime, unit_speed, unit_temperature, temperature, windchill, wspd) VALUES (%s, %s, %s, %s, %s, %s)"
+        query = """UPDATE temperature 
+        SET unit_speed = %s, unit_temperature = %s, temperature = %s, windchill = %s, wspd = %s 
+        WHERE DATE_FORMAT(datetime, %s) = DATE_FORMAT(%s, %s)"""
 
         for measurement in weather_history:
             self.get_cursor().execute(query, measurement)
 
         logger(FINEST, self.CLASS, "SQL executed.")
 
-    def get_temperature_history(self, sensor: str = "sensor_1", period_start: str = None, period_end: str = None) -> json:
+    def get_temperature_history(self, period_start: str = None, period_end: str = None) -> json:
         """
         Function to retrieve the temperature for the Always ON thermostat setting.
 
         Args:
-            sensor:         Name of the sensor that needs to be read. The actual ID will be retrieved from the configuration file.
             period_start:   Timestamp in the format "dd/mm/yyyy hh/mm"
             period_end:     Timestamp in the format "dd/mm/yyyy hh/mm"
 
@@ -139,8 +144,8 @@ class DatabaseDAO:
         logger(FINEST, self.CLASS, "SQL: {} -> sensor[{}], period_start[{}], period_end[{}].".format(
             query, sensor, period_start, period_end))
         """
-        query = "SELECT value, unit, datetime FROM temperature WHERE sensor = \"{}\" AND datetime >= {} AND datetime <= {}".format(
-            sensor, period_start, period_end
+        query = "SELECT sensor_1, unit_temperature, datetime FROM temperature WHERE datetime >= {} AND datetime <= {}".format(
+            period_start, period_end
         )
         logger(FINEST, self.CLASS, "SQL: {}.".format(query))
 
@@ -160,24 +165,25 @@ class DatabaseDAO:
 
         return json.dumps(temperature_history_data)
 
-    def save_temperature(self, sensor: str, unit: str, temperature: float, seconds_heating_on: int):
+    def save_temperature(self, seconds_heating_on: int, unit: str, sensor_1: float = None, sensor_2: float = None, sensor_3: float = None):
         """
         Function to save temperature reading from the sensor.
 
         Args:
-            sensor:             ID of the sensor which read the temperature.
-            unit:               Metrics of the measurement.
-            temperature:        Value of the measurement.
             seconds_heating_on: Time in seconds for which the boiler was heating during the past reading period.
+            unit:               Metrics of the measurement.
+            sensor_1:           Measured temperature by sensor_1.
+            sensor_2:           Measured temperature by sensor_2.
+            sensor_3:           Measured temperature by sensor_3.
 
         Returns:
             none
         """
-        logger(FINE, self.CLASS, "Saving temperature measurement: sensor[{}], unit[{}], temperature[{}], time_state_on[{}]."
-               .format(sensor, unit, temperature, seconds_heating_on))
+        logger(FINE, self.CLASS, "Saving temperature measurement: time_state_on[{}], unit[{}], s1[{}], s2[{}], s3[{}]."
+               .format(seconds_heating_on, unit, sensor_1, sensor_2, sensor_3))
 
-        query = "INSERT INTO temperature (sensor, unit, value, time_state_on) VALUES (%s, %s, %s, %s)"
-        data = (sensor, unit, temperature, seconds_heating_on)
+        query = "INSERT INTO temperature (time_state_on, unit_speed, unit_temperature, sensor_1, sensor_2, sensor_3) VALUES (%s, %s, %s, %s, %s, %s)"
+        data = (seconds_heating_on, 'mph', unit, sensor_1, sensor_2, sensor_3)
 
         self.get_cursor().execute(query, data)
         logger(FINEST, self.CLASS, "SQL executed.")
