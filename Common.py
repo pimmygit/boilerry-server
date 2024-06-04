@@ -57,7 +57,7 @@ def retrieve_weather_history(self) -> None:
     # We do not need to do anything if the last record was less than two hours ago.
     # The weather station would unlikely return anything for that period anyway.
     if last_weather_record_timestamp > datetime.now().timestamp() - 7200:
-        logger(FINE, "Common", "Skipping weather history polling. Last record: {}".format(
+        logger(FINE, "Common", "Skipping weather history polling. Last record is less than 2 hours ago: {}".format(
             timestampToDatetime(last_weather_record_timestamp)))
         return
 

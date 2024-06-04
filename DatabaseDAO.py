@@ -71,7 +71,7 @@ class DatabaseDAO:
         Returns:            The datetime of when the last weather record was taken.
         Created:            18/04/2024
         """
-        query = "SELECT datetime FROM weather ORDER BY datetime DESC LIMIT 1"
+        query = "SELECT datetime FROM temperature WHERE temperature IS NULL ORDER BY datetime ASC LIMIT 1"
 
         logger(FINEST, self.CLASS, "SQL: {}.".format(query))
 
