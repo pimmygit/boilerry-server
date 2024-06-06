@@ -47,7 +47,7 @@ def retrieve_weather_history(self) -> None:
     last_weather_record_timestamp = self.dao.get_weather_last_record_datetime()
 
     if last_weather_record_timestamp == 0.0:
-        # If there is no record in the database yet, lets start with the minimum histry specified in the Config file.
+        # If there is no record in the database yet, lets start with the minimum history specified in the Config file.
         min_days_history = self.config.getMetStation("min_days_history")
         if not min_days_history or min_days_history == "":
             last_weather_record_timestamp = datetime.now().timestamp() - 86400
@@ -68,7 +68,7 @@ def retrieve_weather_history(self) -> None:
     }
 
     http_request = {
-        "startDateTime": timestampToDatetime(last_weather_record_timestamp + 3600),
+        "startDateTime": timestampToDatetime(last_weather_record_timestamp),
         "endDateTime": getCurrentTime(),
         "aggregateHours": "1",
         "location": self.config.getMetStation("location"),

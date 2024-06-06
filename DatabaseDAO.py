@@ -50,7 +50,8 @@ class DatabaseDAO:
                 logger(FINER, self.CLASS,
                        "Connecting to database: host[{}], port[{}], name[{}], user[{}], pass[*****]."
                        .format(DB_HOST, DB_PORT, DB_NAME, DB_USER))
-                self.db_conn = SQL.connect(host=DB_HOST, port=DB_PORT, user=DB_USER, passwd=DB_PASS, db=DB_NAME, autocommit=True)
+                self.db_conn = SQL.connect(host=DB_HOST, port=DB_PORT, user=DB_USER, passwd=DB_PASS, db=DB_NAME,
+                                           autocommit=True)
             except SQL.connector.Error as err:
                 logger(CRITICAL, self.CLASS,
                        "Failed to connect to host[{}], port[{}], name[{}], user[{}], pass[****]:"
@@ -112,7 +113,7 @@ class DatabaseDAO:
 
         logger(FINEST, self.CLASS, "SQL executed.")
 
-    def get_temperature_history(self, period_start: str = None, period_end: str = None) -> json:
+    def get_temperature_history(self, period_start: str = None, period_end: str = None) -> str:
         """
         Function to retrieve the temperature for the Always ON thermostat setting.
 
@@ -120,17 +121,19 @@ class DatabaseDAO:
             period_start:   Timestamp in the format "dd/mm/yyyy hh/mm"
             period_end:     Timestamp in the format "dd/mm/yyyy hh/mm"
 
-        Returns:            The temperature readings for the past period as a JSON object
+        Returns:            The temperature readings for the past period as a JSON string
         Created:            31/03/2024
         """
         if not period_start or not validateDateTime(period_start):
-            logger(FINER, self.CLASS, "Retrieving historical temperature failed to recognise start period: {}".format(period_start))
+            logger(FINER, self.CLASS,
+                   "Retrieving historical temperature failed to recognise start period: {}".format(period_start))
             period_start = "NOW() - INTERVAL 2 DAY"
         else:
             period_start = "\"{}\"".format(period_start)
 
         if not period_end or not validateDateTime(period_end):
-            logger(FINER, self.CLASS, "Retrieving historical temperature failed to recognise end period: {}".format(period_end))
+            logger(FINER, self.CLASS,
+                   "Retrieving historical temperature failed to recognise end period: {}".format(period_end))
             period_end = "NOW()"
         else:
             period_end = "\"{}\"".format(period_end)
@@ -144,9 +147,7 @@ class DatabaseDAO:
         logger(FINEST, self.CLASS, "SQL: {} -> sensor[{}], period_start[{}], period_end[{}].".format(
             query, sensor, period_start, period_end))
         """
-        query = "SELECT sensor_1, unit_temperature, datetime FROM temperature WHERE datetime >= {} AND datetime <= {}".format(
-            period_start, period_end
-        )
+        query = "SELECT * FROM temperature WHERE datetime >= {} AND datetime <= {}".format(period_start, period_end)
         logger(FINEST, self.CLASS, "SQL: {}.".format(query))
 
         cursor = self.get_cursor()
@@ -154,18 +155,26 @@ class DatabaseDAO:
         logger(FINEST, self.CLASS, "SQL executed.")
 
         temperature_history_data = []
-        for result in cursor:
-            temperature_history_data.append({
-                "datetime": "{}".format(result[2].timestamp()),
-                "temperature": "{}".format(result[0]),
-                "unit": "{}".format(result[1])
-            })
+        for rs in cursor:
+            temperature_data_string = """"{}": """.format(rs[0])
+            temperature_data_string += "{" + """ "time_state_on": "{}", "unit_speed": "{}", "unit_temperature": "{}", "temperature": "{}", "windchill": "{}", "wspd": "{}", "sensor_1": "{}", "sensor_2": "{}", "sensor_3": "{}" """.format(
+                                           rs[1], rs[2], rs[3], rs[4], rs[5], rs[6], rs[7], rs[8], rs[9]) + "}"
+            temperature_history_data.append(temperature_data_string)
 
         logger(FINER, self.CLASS, "Retrieved {} temperatures from the database.".format(len(temperature_history_data)))
 
-        return json.dumps(temperature_history_data)
+        temperature_history_data = json.dumps(temperature_history_data)
+        temperature_history_data = temperature_history_data.replace("[", "{")
+        temperature_history_data = temperature_history_data.replace("]", "}")
+        temperature_history_data = temperature_history_data.replace("\"{", "{")
+        temperature_history_data = temperature_history_data.replace("\\", "")
+        temperature_history_data = temperature_history_data.replace("\"\"", "\"")
+        temperature_history_data = temperature_history_data.replace("}\"", "}")
 
-    def save_temperature(self, seconds_heating_on: int, unit: str, sensor_1: float = None, sensor_2: float = None, sensor_3: float = None):
+        return temperature_history_data
+
+    def save_temperature(self, seconds_heating_on: int, unit: str, sensor_1: float = None, sensor_2: float = None,
+                         sensor_3: float = None):
         """
         Function to save temperature reading from the sensor.
 
