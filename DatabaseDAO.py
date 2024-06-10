@@ -156,20 +156,20 @@ class DatabaseDAO:
 
         temperature_history_data = []
         for rs in cursor:
-            temperature_data_string = """"{}": """.format(rs[0])
-            temperature_data_string += "{" + """ "time_state_on": "{}", "unit_speed": "{}", "unit_temperature": "{}", "temperature": "{}", "windchill": "{}", "wspd": "{}", "sensor_1": "{}", "sensor_2": "{}", "sensor_3": "{}" """.format(
-                                           rs[1], rs[2], rs[3], rs[4], rs[5], rs[6], rs[7], rs[8], rs[9]) + "}"
+            temperature_data_string = "{" + """ "datetime": "{}", "time_state_on": "{}", "unit_speed": "{}", "unit_temperature": "{}", "temperature": "{}", "windchill": "{}", "wspd": "{}", "sensor_1": "{}", "sensor_2": "{}", "sensor_3": "{}" """.format(
+                                           rs[0], rs[1], rs[2], rs[3], rs[4], rs[5], rs[6], rs[7], rs[8], rs[9]) + "}"
             temperature_history_data.append(temperature_data_string)
 
         logger(FINER, self.CLASS, "Retrieved {} temperatures from the database.".format(len(temperature_history_data)))
 
         temperature_history_data = json.dumps(temperature_history_data)
-        temperature_history_data = temperature_history_data.replace("[", "{")
-        temperature_history_data = temperature_history_data.replace("]", "}")
         temperature_history_data = temperature_history_data.replace("\"{", "{")
         temperature_history_data = temperature_history_data.replace("\\", "")
         temperature_history_data = temperature_history_data.replace("\"\"", "\"")
         temperature_history_data = temperature_history_data.replace("}\"", "}")
+
+        #response_log = (json.dumps(temperature_history_data)[:300] + '..(truncated)') if len(json.dumps(temperature_history_data)) > 300 else json.dumps(temperature_history_data)
+        #logger(FINEST, self.CLASS, "Json: {}".format(response_log))
 
         return temperature_history_data
 

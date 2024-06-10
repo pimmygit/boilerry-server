@@ -225,7 +225,7 @@ class AndroidServer:
         json_response = json.loads(json_response)
 
         # Logging up to the first couple of historical temperatures as they usually come in hundreds (~900).
-        response_log = (json.dumps(json_response)[:600] + '..(truncated)') if len(json.dumps(json_response)) > 600 else json.dumps(json_response)
+        response_log = (json.dumps(json_response)[:400] + '..(truncated)') if len(json.dumps(json_response)) > 400 else json.dumps(json_response)
         logger(FINEST, self.CLASS, "Sending response: size[{}]: {}".format(len(json.dumps(json_response)), response_log))
 
         return json_response
