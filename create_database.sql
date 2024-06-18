@@ -28,7 +28,7 @@ modified		TIMESTAMP				            # Time of account's last modification
 #
 CREATE TABLE IF NOT EXISTS temperature(
 datetime		    TIMESTAMP NOT NULL DEFAULT NOW(),	# Date and time when the measurement was taken
-time_state_on       SMALLINT,    				        # Shows the time in seconds for the interval between this and the previous reading, for which the boiler was heating.
+time_state_on       SMALLINT NOT NULL DEFAULT 0,        # Shows the time in seconds for the interval between this and the previous reading, for which the boiler was heating.
 unit_speed          VARCHAR(3) NOT NULL DEFAULT 'mph',	# Wind speed unit - kph/mph
 unit_temperature    VARCHAR(1) NOT NULL DEFAULT 'C',	# Temperature unit - C/F
 temperature		    FLOAT,                              # Measured temperature outside

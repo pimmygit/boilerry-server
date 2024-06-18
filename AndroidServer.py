@@ -192,7 +192,7 @@ class AndroidServer:
         """
         json_response = init_state_response()
 
-        # Get the thermostat state
+        # Get the thermostat relay state
         json_response[CONST_THERMO_RELAY] = str(thermostat.get_thermo_state())
         logger(FINEST, self.CLASS, "State->{}: {}".format(
             CONST_THERMO_RELAY, str(json_response[CONST_THERMO_RELAY]).lower()))

@@ -22,7 +22,7 @@ from typing import List, Tuple
 
 import MySQLdb as SQL
 
-from Common import logger, timestampToDatetime, validateDateTime
+from Common import logger, timestampToDatetime, validateDateTime, mpt
 from Constants import CRITICAL, WARNING, FINE, FINER, FINEST
 from Constants import DB_HOST, DB_PORT, DB_NAME, DB_USER, DB_PASS
 
@@ -167,14 +167,15 @@ class DatabaseDAO:
         temperature_history_data = temperature_history_data.replace("\\", "")
         temperature_history_data = temperature_history_data.replace("\"\"", "\"")
         temperature_history_data = temperature_history_data.replace("}\"", "}")
+        temperature_history_data = temperature_history_data.replace("None", "")
 
         #response_log = (json.dumps(temperature_history_data)[:300] + '..(truncated)') if len(json.dumps(temperature_history_data)) > 300 else json.dumps(temperature_history_data)
         #logger(FINEST, self.CLASS, "Json: {}".format(response_log))
 
         return temperature_history_data
 
-    def save_temperature(self, seconds_heating_on: int, unit: str, sensor_1: float = None, sensor_2: float = None,
-                         sensor_3: float = None):
+    def save_temperature(self, seconds_heating_on: int, unit: str,
+                         sensor_1: float = None, sensor_2: float = None, sensor_3: float = None):
         """
         Function to save temperature reading from the sensor.
 
