@@ -2,7 +2,7 @@
 
 The Predictive Heting Control server component monitors the household and based on pattern of arrival and leaving the property, fine tunes the heating system for better efficiency and comfort.
 
-![Architecture](HouseholdHeating.architecture.png Architecture)
+![Architecture](./HouseholdHeating.architecture.png Architecture)
 
 ### Hardware
 RaspberryPi Zero with dual-relay module and switching power supply.
