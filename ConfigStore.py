@@ -19,6 +19,8 @@
 ###################################################################
 import configparser
 import time
+import os
+import pathlib
 
 from Constants import CONFIG_UPDATE_PERIOD, LOG_LEVELS
 
@@ -42,11 +44,13 @@ class ConfigStore(metaclass=Singleton):
 
     Created: 20/03/1024
     """
-    def __init__(self, config_file: str = "boilerry.ini"):
+
+    def __init__(self, home_dir: str = "/opt/boilerry", config_file: str = "boilerry.ini"):
         """
         Instance creation method for the Database and File configuration stores.
 
         Args:
+            home_dir (str):  Absolute path to the application's home directory.
             config_file (str):  Name of the configuration file to use.
 
         Returns:
@@ -57,7 +61,20 @@ class ConfigStore(metaclass=Singleton):
         super().__init__()
         self.CLASS = "ConfigStore"
 
-        self.file = config_file
+        self.file = os.environ.get("BOILERRY_HOME", home_dir) + "/" + config_file
+        if "BOILERRY_HOME" in os.environ:
+            home_dir = os.environ.get("BOILERRY_HOME")
+
+        if not os.path.isdir(home_dir):
+            print("Invalid application's home directory: {}".format(home_dir))
+            print("Check your environment variable: BOILERRY_HOME")
+            exit(1)
+
+        self.file = os.path.join(os.getcwd(), home_dir, config_file)
+        if not os.path.exists(self.file):
+            print("Config file not found: {}".format(self.file))
+            exit(1)
+
         self.config = configparser.ConfigParser()
         self.config_read_time = 0
 
@@ -68,10 +85,11 @@ class ConfigStore(metaclass=Singleton):
         if self.config_read_time + CONFIG_UPDATE_PERIOD <= int(time.time()):
             self.config_read_time = int(time.time())
             try:
+                """ TODO: provide a path to the ini file"""
                 with open(self.file) as file:
                     self.config.read_file(file)
             except IOError:
-                print("Failed to read configuration file: {}. Using defaults.".format(self.file))
+                print("Failed to read configuration file '{}'. Using defaults.".format(self.file))
 
     def getLogLevel(self) -> int:
         """

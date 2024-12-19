@@ -22,8 +22,8 @@ from typing import List, Tuple
 
 import MySQLdb as SQL
 
-from Common import logger, timestampToDatetime, validateDateTime, mpt
-from Constants import CRITICAL, WARNING, FINE, FINER, FINEST
+from Common import logger, timestampToDatetime, validateDateTime
+from Constants import CRITICAL, WARNING, FINE, FINER, FINEST, INFO
 from Constants import DB_HOST, DB_PORT, DB_NAME, DB_USER, DB_PASS
 
 
@@ -259,18 +259,24 @@ class DatabaseDAO:
         Returns:    The temperature for Always ON thermostat setting.
         Created:    08/02/2024
         """
+        therm_default = 16.0
         query = "SELECT temperature FROM thermostat WHERE timeStart = \"00:00\" AND timeEnd = \"00:00\""
         logger(FINEST, self.CLASS, "SQL: {}.".format(query))
         cursor = self.get_cursor()
         cursor.execute(query)
         logger(FINEST, self.CLASS, "SQL executed.")
 
-        thermo_temp = 0.0
-        for value in cursor:
-            thermo_temp = value[0]
-            logger(FINER, self.CLASS, "Retrieved: 'thermostat Always ON temperature' -> {}".format(thermo_temp))
+        if cursor.rowcount == 0:
+            # This is the first time the server is being started, hence we add a default temperature.
+            query = "INSERT INTO thermostat VALUES ({}, \"00:00\", \"00:00\")".format(therm_default)
+            cursor.execute(query)
+            logger(INFO, self.CLASS, "Initialised: 'thermostat Always ON temperature' -> {}".format(therm_default))
 
-        return int(thermo_temp)
+        for value in cursor:
+            therm_default = value[0]
+            logger(FINER, self.CLASS, "Retrieved: 'thermostat Always ON temperature' -> {}".format(therm_default))
+
+        return int(therm_default)
 
     def get_thermostat(self):
         """

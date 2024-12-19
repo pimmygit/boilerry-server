@@ -113,6 +113,8 @@ def retrieve_weather_history(self) -> None:
         if not weather_wind or weather_wind == "":
             weather_wind = 0.0
 
+        logger(FINER, "Common", "Weather datetime received: {}".format(weather_datetime))
+
         weather_history.append((
             weather_unit_speed,
             weather_unit_temp,
@@ -120,7 +122,8 @@ def retrieve_weather_history(self) -> None:
             float(weather_chill),
             float(weather_wind),
             '%d/%m/%Y %H',
-            datetime.strptime(''.join(weather_datetime.rsplit(':', 1)), '%Y-%m-%dT%H:%M:%S%z'),
+            #datetime.strptime(weather_datetime, '%Y-%m-%dT%H:%M:%S%z'),
+            parse(weather_datetime),
             '%d/%m/%Y %H'
         ))
 
