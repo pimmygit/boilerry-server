@@ -2,7 +2,7 @@
 ###################################################################
 # Heating system control with Raspberry Pi
 # -----------------------------------------------------------------
-# (C) Copyright VAYAK Ltd (info@vayak.com). 2018, 2024
+# (C) Copyright VAYAK Ltd (info@vayak.com). 2018, 2025
 # All Rights Reserved
 #
 # THIS IS UNPUBLISHED PROPRIETARY SOURCE CODE
@@ -18,9 +18,10 @@
 # prohibited unless otherwise provided in the license agreement.
 ###################################################################
 import json
-from typing import List, Tuple
+import pymysql
 
-import MySQLdb as SQL
+from dbutils.persistent_db import PersistentDB
+from typing import List, Tuple
 
 from Common import logger, timestampToDatetime, validateDateTime
 from Constants import CRITICAL, WARNING, FINE, FINER, FINEST, INFO
@@ -35,40 +36,54 @@ class DatabaseDAO:
     """
 
     def __init__(self):
-        self.CLASS = "DatabaseDAO"
-        self.db_conn = None
-
-    def get_cursor(self):
         """
-        Create or reuse database connection instance to provide the cursor
+        Create or reuse pooled database instance
 
         Returns:
-            Database connection cursor
+            Database connection pool
         """
-        if not self.db_conn:
-            try:
-                logger(FINER, self.CLASS,
-                       "Connecting to database: host[{}], port[{}], name[{}], user[{}], pass[*****]."
-                       .format(DB_HOST, DB_PORT, DB_NAME, DB_USER))
-                self.db_conn = SQL.connect(host=DB_HOST, port=DB_PORT, user=DB_USER, passwd=DB_PASS, db=DB_NAME,
-                                           autocommit=True)
-            except SQL.connector.Error as err:
-                logger(CRITICAL, self.CLASS,
-                       "Failed to connect to host[{}], port[{}], name[{}], user[{}], pass[****]:"
-                       .format(DB_HOST, DB_PORT, DB_NAME, DB_USER))
-                self.db_conn.close()
-        # else:
-        #    logger(FINEST, self.CLASS, "Reusing connection..")
+        self.CLASS = "DatabaseDAO"
 
-        # logger(FINEST, self.CLASS, "Returning cursor..")
-        self.db_conn.ping(True)
-        return self.db_conn.cursor()
+        logger(FINER, self.CLASS, "Connecting to database: host[{}], port[{}], name[{}], user[{}], pass[*****].".format(DB_HOST, DB_PORT, DB_NAME, DB_USER))
+        self.db_pool = PersistentDB(
+            creator=pymysql,
+            host=DB_HOST,
+            port=DB_PORT,
+            user=DB_USER,
+            password=DB_PASS,
+            database=DB_NAME,
+            charset='utf8mb4',
+            autocommit=True
+        )
+
+    def dbu_send(self, query: str, params: Tuple = None) -> Tuple:
+        """
+        Generator function to yield rows from a MySQL query lazily.
+
+        Args:
+            query:          SQL query to execute.
+            params:         Tuple containing the SQL query parameters.
+        Returns:            The SQL execution result
+        Created:            25/03/2025
+        """
+        connection = self.db_pool.connection()
+        try:
+            with connection.cursor() as cursor:
+                cursor.execute(query, params)
+                while True:
+                    row = cursor.fetchone()
+                    if row is None:
+                        break
+                    yield row
+        finally:
+            connection.close()
+            logger(FINEST, self.CLASS, "SQL executed.")
 
     def get_weather_last_record_datetime(self) -> float:
         """
         Function to retrieve the date time of when the last weather record was taken.
 
-        Args:
+        Args:               None
         Returns:            The datetime of when the last weather record was taken.
         Created:            18/04/2024
         """
@@ -76,11 +91,7 @@ class DatabaseDAO:
 
         logger(FINEST, self.CLASS, "SQL: {}.".format(query))
 
-        cursor = self.get_cursor()
-        cursor.execute(query)
-        logger(FINEST, self.CLASS, "SQL executed.")
-
-        for result in cursor:
+        for result in self.dbu_send(query):
             logger(FINER, self.CLASS, "Retrieved datetime of the last weather record: {}".format(
                 timestampToDatetime(int(result[0].timestamp()))))
             return result[0].timestamp()
@@ -109,7 +120,8 @@ class DatabaseDAO:
         WHERE DATE_FORMAT(datetime, %s) = DATE_FORMAT(%s, %s)"""
 
         for measurement in weather_history:
-            self.get_cursor().execute(query, measurement)
+            logger(FINEST, self.CLASS, "Saving: {}".format(measurement))
+            self.dbu_send(query, measurement)
 
         logger(FINEST, self.CLASS, "SQL executed.")
 
@@ -150,12 +162,8 @@ class DatabaseDAO:
         query = "SELECT * FROM temperature WHERE datetime >= {} AND datetime <= {}".format(period_start, period_end)
         logger(FINEST, self.CLASS, "SQL: {}.".format(query))
 
-        cursor = self.get_cursor()
-        cursor.execute(query)
-        logger(FINEST, self.CLASS, "SQL executed.")
-
         temperature_history_data = []
-        for rs in cursor:
+        for rs in self.dbu_send(query):
             temperature_data_string = "{" + """ "datetime": "{}", "time_state_on": "{}", "unit_speed": "{}", "unit_temperature": "{}", "temperature": "{}", "windchill": "{}", "wspd": "{}", "sensor_1": "{}", "sensor_2": "{}", "sensor_3": "{}" """.format(
                                            rs[0], rs[1], rs[2], rs[3], rs[4], rs[5], rs[6], rs[7], rs[8], rs[9]) + "}"
             temperature_history_data.append(temperature_data_string)
@@ -195,8 +203,7 @@ class DatabaseDAO:
         query = "INSERT INTO temperature (time_state_on, unit_speed, unit_temperature, sensor_1, sensor_2, sensor_3) VALUES (%s, %s, %s, %s, %s, %s)"
         data = (seconds_heating_on, 'mph', unit, sensor_1, sensor_2, sensor_3)
 
-        self.get_cursor().execute(query, data)
-        logger(FINEST, self.CLASS, "SQL executed.")
+        self.dbu_send(query, data)
 
     def save_motion(self, sensor: str, motion_first: int, motion_last: int, activity_ranking: str):
         """
@@ -226,15 +233,12 @@ class DatabaseDAO:
                .format(sensor, motion_first_datetime, motion_last_datetime))
 
         # Check if we have already started a record period with this start motion timestamp
-        cursor = self.get_cursor()
         query = "SELECT * FROM presence WHERE sensor = %s AND motionFirst = %s"
         data = (sensor, motion_first_datetime)
         logger(FINEST, self.CLASS, "SQL: {} -> sensor[{}], motionFirst[{}]."
                .format(query, sensor, motion_first_datetime))
-        cursor.execute(query, data)
-        logger(FINEST, self.CLASS, "SQL executed.")
 
-        if cursor.fetchone() is None:
+        if self.dbu_send(query, data) is None:
             # We are starting a new motion period
             query = "INSERT INTO presence (sensor, motionFirst, motionLast, activityRanking) VALUES (%s, %s, %s, %s)"
             data = (sensor, motion_first_datetime, motion_last_datetime, activity_ranking)
@@ -249,8 +253,7 @@ class DatabaseDAO:
                    "SQL: {} -> motionLast[{}], activityRanking[{}], sensor[{}], motionFirst[{}]."
                    .format(query, motion_last_datetime, activity_ranking, sensor, motion_first_datetime))
 
-        cursor.execute(query, data)
-        logger(FINEST, self.CLASS, "SQL executed.")
+        self.dbu_send(query, data)
 
     def get_thermostat_manual(self) -> int:
         """
@@ -262,21 +265,17 @@ class DatabaseDAO:
         therm_default = 16.0
         query = "SELECT temperature FROM thermostat WHERE timeStart = \"00:00\" AND timeEnd = \"00:00\""
         logger(FINEST, self.CLASS, "SQL: {}.".format(query))
-        cursor = self.get_cursor()
-        cursor.execute(query)
-        logger(FINEST, self.CLASS, "SQL executed.")
+        therm_setting = list(self.dbu_send(query))
 
-        if cursor.rowcount == 0:
+        if therm_setting:
+            logger(FINER, self.CLASS, "Retrieved: 'thermostat Always ON temperature' -> {}".format(therm_setting))
+            return int(therm_setting[0])
+        else:
             # This is the first time the server is being started, hence we add a default temperature.
             query = "INSERT INTO thermostat VALUES ({}, \"00:00\", \"00:00\")".format(therm_default)
-            cursor.execute(query)
+            self.dbu_send(query)
             logger(INFO, self.CLASS, "Initialised: 'thermostat Always ON temperature' -> {}".format(therm_default))
-
-        for value in cursor:
-            therm_default = value[0]
-            logger(FINER, self.CLASS, "Retrieved: 'thermostat Always ON temperature' -> {}".format(therm_default))
-
-        return int(therm_default)
+            return int(therm_default)
 
     def get_thermostat(self):
         """
@@ -289,11 +288,8 @@ class DatabaseDAO:
         query = "SELECT * FROM thermostat"
 
         logger(FINEST, self.CLASS, "SQL: {}.".format(query))
-        cursor = self.get_cursor()
-        cursor.execute(query)
-        logger(FINEST, self.CLASS, "SQL executed.")
 
-        for value in cursor:
+        for value in self.dbu_send(query):
             logger(FINER, self.CLASS, "Retrieved: {}".format(value))
             'Tuple(temperature-timeStart-timeEnd)'
             thermostat_settings.append(tuple([value[0], value[1], value[2]]))
@@ -338,21 +334,4 @@ class DatabaseDAO:
         logger(FINEST, self.CLASS, "SQL: {} -> temperature[{}], start[{}], end[{}]."
                .format(query, temperature, time_start, time_end))
 
-        self.get_cursor().execute(query, data)
-        logger(FINEST, self.CLASS, "SQL executed.")
-        # self.db_conn.commit()
-
-    def close(self):
-        """
-        Close database resources.
-        Args:    none
-        Returns: none
-        Created: 02.02.2018
-        """
-        try:
-            self.get_cursor().close()
-            self.db_conn.close()
-        except Exception as e:
-            logger(WARNING, self.CLASS, "Failed to close database resources.")
-        finally:
-            logger(FINEST, self.CLASS, "Database resources closed.")
+        self.dbu_send(query, data)

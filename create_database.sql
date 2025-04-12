@@ -1,32 +1,40 @@
+#DROP DATABASE boilerry;
+#DROP USER 'boser'@'%';
+#DROP USER 'boser'@localhost;
+#CREATE USER 'boser'@'%' IDENTIFIED BY 'S1r3n3';
+CREATE USER 'boser'@'localhost' IDENTIFIED BY 'S1r3n3';
+CREATE DATABASE boilerry COMMENT 'Household heating system';
+#GRANT ALTER, CREATE, DELETE, DROP, INSERT, SELECT, UPDATE ON boilerry.* TO 'boser'@'%';
+GRANT ALTER, CREATE, DELETE, DROP, INSERT, SELECT, UPDATE ON boilerry.* TO 'boser'@'localhost';
 USE boilerry;
 #
 # Name: users
 # Desc: Contains user accounts
 # Last: 21.01.2018
 #
-CREATE TABLE IF NOT EXISTS user(
-name			VARCHAR(20) NOT NULL,			    # Login name
-title			VARCHAR(5),				            # Users title
-nameFirst		VARCHAR(20) NOT NULL,			    # Users first name
-nameLast		VARCHAR(20) NOT NULL,			    # Users last name
-dob			    DATE,					            # Date of birth
-mail			VARCHAR(50) NOT NULL PRIMARY KEY,	# Identification of the user
-addressLine1	VARCHAR(30),				        # First line address
-addressLine2	VARCHAR(30),				        # Second line address
-addressTown		VARCHAR(20),				        # Town
-addressCode		VARCHAR(10),				        # Post Code
-addressCountry	VARCHAR(20),				        # Country
-phone			VARCHAR(20),				        # Contact landline number
-password		VARCHAR(20),				        # Password for account access
-created			TIMESTAMP NOT NULL DEFAULT NOW(),	# Time of account creation
-modified		TIMESTAMP				            # Time of account's last modification
+CREATE TABLE user(
+name			    VARCHAR(20) NOT NULL,			    # Login name
+title			    VARCHAR(5),				            # Users title
+nameFirst		    VARCHAR(20) NOT NULL,			    # Users first name
+nameLast		    VARCHAR(20) NOT NULL,			    # Users last name
+dob			        DATE,					            # Date of birth
+mail			    VARCHAR(50) NOT NULL PRIMARY KEY,	# Identification of the user
+addressLine1	    VARCHAR(30),				        # First line address
+addressLine2	    VARCHAR(30),				        # Second line address
+addressTown		    VARCHAR(20),				        # Town
+addressCode		    VARCHAR(10),				        # Post Code
+addressCountry	    VARCHAR(20),				        # Country
+phone			    VARCHAR(20),				        # Contact landline number
+password		    VARCHAR(20),				        # Password for account access
+created			    TIMESTAMP NOT NULL DEFAULT NOW(),	# Time of account creation
+modified		    TIMESTAMP				            # Time of account`s last modification
 );
 #
 # Name: temperature
 # Desc: Contains temperature measurements
-# Last: 03.06.2024
+# Last: 03/06/2024
 #
-CREATE TABLE IF NOT EXISTS temperature(
+CREATE TABLE temperature(
 datetime		    TIMESTAMP NOT NULL DEFAULT NOW(),	# Date and time when the measurement was taken
 time_state_on       SMALLINT NOT NULL DEFAULT 0,        # Shows the time in seconds for the interval between this and the previous reading, for which the boiler was heating.
 unit_speed          VARCHAR(3) NOT NULL DEFAULT 'mph',	# Wind speed unit - kph/mph
@@ -41,20 +49,21 @@ sensor_3            FLOAT                               # Measured temperature f
 #
 # Name: thermostat
 # Desc: Contains the temperature which the boiler should maintain
-# Last: 10.12.2023
+# Last: 30/03/2025
 #
-CREATE TABLE IF NOT EXISTS thermostat(
-temperature		FLOAT,					            # Temperature to maintain during this period
-timeStart		VARCHAR(5) NOT NULL,	            # Start of the time period in the format: "HH:MM"
-timeEnd 		VARCHAR(5) NOT NULL,	            # End of the time period in the format: "HH:MM"
+CREATE TABLE thermostat(
+day_of_week		    VARCHAR(3),							# mon | tue | wed | thu | fri | sat | sun
+temperature		    FLOAT,					           	# Temperature to maintain during this period
+timeStart		    VARCHAR(5) NOT NULL,	           	# Start of the time period in the format: "HH:MM"
+timeEnd 		    VARCHAR(5) NOT NULL	            	# End of the time period in the format: "HH:MM"
 );
 #
 # Name: presence
 # Desc: Contains detection of presence. First and last motion is determined by the settings.presenceInterval value.
-# Last: 21.01.2018
+# Last: 21/01/2018
 #
-CREATE TABLE IF NOT EXISTS presence(
-sensor			    VARCHAR(20) NOT NULL,           # ID of the sensor
-datetimeFirst		TIMESTAMP,				        # Time when the first motion was detected
-datetimeLast		TIMESTAMP				        # Time when the measurement was taken
+CREATE TABLE presence(
+sensor			    VARCHAR(20) NOT NULL,           	# ID of the sensor
+datetimeFirst		TIMESTAMP,				        	# Time when the first motion was detected
+datetimeLast		TIMESTAMP				        	# Time when the measurement was taken
 );

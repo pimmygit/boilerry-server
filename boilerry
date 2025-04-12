@@ -6,7 +6,7 @@ export BHOME=/opt/boilerry
 case "$1" in
   start)
     echo "Starting boilerry"
-    sudo /usr/bin/python3 $BHOME/Boilerry.py &
+    sudo $BHOME/python/bin/python3 $BHOME/Boilerry.py &
     ;;
   stop)
     echo "Stopping boilerry"
