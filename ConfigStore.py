@@ -45,7 +45,7 @@ class ConfigStore(metaclass=Singleton):
     Created: 20/03/1024
     """
 
-    def __init__(self, home_dir: str = "/opt/boilerry", config_file: str = "boilerry.ini"):
+    def __init__(self, home_dir: str = "/opt/boilerry-server", config_file: str = "boilerry.ini"):
         """
         Instance creation method for the Database and File configuration stores.
 

@@ -21,7 +21,6 @@
 ###################################################################
 import asyncio
 import json
-from asyncio import get_event_loop
 from json import JSONDecodeError
 
 import websockets
@@ -106,13 +105,10 @@ class AndroidServer:
         handler = websockets.serve(self.process_request, self.config.getAndroidServer("host", def_host),
                                    self.config.getAndroidServer("port", def_port))
         logger(FINER, self.CLASS, "Handler created.".format(self.config.getAndroidServer("port", def_port)))
-        asyncio.main().run_until_complete(handler)
+        asyncio.get_event_loop().run_until_complete(handler)
         logger(FINER, self.CLASS, "Websocket created.".format(self.config.getAndroidServer("port", def_port)))
         """Nothing below the line above will get executed - it loops the asyncio forever."""
-        asyncio.main().run_forever()
-
-    async def main(self):
-        return await get_event_loop()
+        asyncio.get_event_loop().run_forever()
 
     def get_json_from_request(self, request_string: str) -> json:
         """
