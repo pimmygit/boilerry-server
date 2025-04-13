@@ -23,7 +23,7 @@ import asyncio
 import json
 from json import JSONDecodeError
 
-import websockets
+from websockets.asyncio.server import serve
 
 from Common import logger, retrieve_weather_history
 from ConfigStore import ConfigStore
@@ -102,8 +102,7 @@ class AndroidServer:
 
         logger(FINER, self.CLASS,
                "Opening WebSocket on port: {}..".format(self.config.getAndroidServer("port", def_port)))
-        handler = websockets.serve(self.process_request, self.config.getAndroidServer("host", def_host),
-                                   self.config.getAndroidServer("port", def_port))
+        handler = serve(self.process_request, self.config.getAndroidServer("host", def_host), self.config.getAndroidServer("port", def_port))
         logger(FINER, self.CLASS, "Handler created.".format(self.config.getAndroidServer("port", def_port)))
         asyncio.get_event_loop().run_until_complete(handler)
         logger(FINER, self.CLASS, "Websocket created.".format(self.config.getAndroidServer("port", def_port)))
