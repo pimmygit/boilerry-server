@@ -1,0 +1,48 @@
+<mxfile host="app.diagrams.net" agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36" version="26.0.4">
+  <diagram name="Page-1" id="ncV_FTn4OXcqWHJWb7yz">
+    <mxGraphModel dx="1434" dy="756" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="827" pageHeight="1169" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <mxCell id="-reakuJ7-ib9B6EmPJay-25" value="" style="rounded=0;whiteSpace=wrap;html=1;" vertex="1" parent="1">
+          <mxGeometry x="120" y="70" width="600" height="240" as="geometry" />
+        </mxCell>
+        <mxCell id="-reakuJ7-ib9B6EmPJay-19" value="&lt;b&gt;&lt;font style=&quot;color: rgb(0, 102, 102);&quot;&gt;Internet&lt;/font&gt;&lt;/b&gt;" style="ellipse;shape=cloud;whiteSpace=wrap;html=1;fillColor=#EDF6FF;strokeColor=#6c8ebf;gradientColor=#CCE5FF;" vertex="1" parent="1">
+          <mxGeometry x="149" y="82" width="530" height="100" as="geometry" />
+        </mxCell>
+        <mxCell id="-reakuJ7-ib9B6EmPJay-1" value="" style="image;html=1;image=img/lib/clip_art/telecommunication/iPhone_128x128.png" vertex="1" parent="1">
+          <mxGeometry x="140" y="190" width="80" height="80" as="geometry" />
+        </mxCell>
+        <mxCell id="-reakuJ7-ib9B6EmPJay-9" value="" style="html=1;shadow=0;dashed=0;align=center;verticalAlign=middle;shape=mxgraph.arrows2.twoWayArrow;dy=0.65;dx=22;rotation=-45;" vertex="1" parent="1">
+          <mxGeometry x="200" y="162" width="80" height="20" as="geometry" />
+        </mxCell>
+        <mxCell id="-reakuJ7-ib9B6EmPJay-17" value="" style="shape=mxgraph.cisco.buildings.telecommuter_house;sketch=0;html=1;pointerEvents=1;dashed=0;fillColor=#036897;strokeColor=#ffffff;strokeWidth=2;verticalLabelPosition=bottom;verticalAlign=top;align=center;outlineConnect=0;" vertex="1" parent="1">
+          <mxGeometry x="579" y="180" width="104" height="88" as="geometry" />
+        </mxCell>
+        <mxCell id="-reakuJ7-ib9B6EmPJay-18" value="" style="shape=mxgraph.cisco.misc.vip;sketch=0;html=1;pointerEvents=1;dashed=0;fillColor=#036897;strokeColor=#ffffff;strokeWidth=2;verticalLabelPosition=bottom;verticalAlign=top;align=center;outlineConnect=0;" vertex="1" parent="1">
+          <mxGeometry x="599" y="222" width="44" height="46" as="geometry" />
+        </mxCell>
+        <mxCell id="-reakuJ7-ib9B6EmPJay-22" value="Boilerry App" style="text;html=1;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontStyle=1;fontColor=#003366;" vertex="1" parent="1">
+          <mxGeometry x="140" y="270" width="80" height="30" as="geometry" />
+        </mxCell>
+        <mxCell id="-reakuJ7-ib9B6EmPJay-24" value="Heating System" style="text;html=1;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontStyle=1;fontColor=#003366;" vertex="1" parent="1">
+          <mxGeometry x="560" y="268" width="142" height="30" as="geometry" />
+        </mxCell>
+        <mxCell id="-reakuJ7-ib9B6EmPJay-27" value="" style="html=1;shadow=0;dashed=0;align=center;verticalAlign=middle;shape=mxgraph.arrows2.twoWayArrow;dy=0.65;dx=22;rotation=45;" vertex="1" parent="1">
+          <mxGeometry x="540" y="162" width="80" height="20" as="geometry" />
+        </mxCell>
+        <mxCell id="-reakuJ7-ib9B6EmPJay-33" value="" style="endArrow=classic;startArrow=classic;html=1;rounded=0;dashed=1;" edge="1" parent="1">
+          <mxGeometry width="50" height="50" relative="1" as="geometry">
+            <mxPoint x="280" y="150" as="sourcePoint" />
+            <mxPoint x="540" y="150" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="-reakuJ7-ib9B6EmPJay-34" value="Direct connection" style="edgeLabel;html=1;align=center;verticalAlign=middle;resizable=0;points=[];" vertex="1" connectable="0" parent="-reakuJ7-ib9B6EmPJay-33">
+          <mxGeometry x="-0.4231" y="-3" relative="1" as="geometry">
+            <mxPoint x="59" y="-3" as="offset" />
+          </mxGeometry>
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

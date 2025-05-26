@@ -18,6 +18,8 @@
 # prohibited unless otherwise provided in the license agreement.
 ###################################################################
 import json
+import time
+
 import pymysql
 
 from dbutils.persistent_db import PersistentDB
@@ -52,7 +54,7 @@ class DatabaseDAO:
             user=DB_USER,
             password=DB_PASS,
             database=DB_NAME,
-            charset='utf8mb4',
+            charset='utf8',
             autocommit=True
         )
 
@@ -68,16 +70,28 @@ class DatabaseDAO:
         """
         connection = self.db_pool.connection()
         try:
-            with connection.cursor() as cursor:
-                cursor.execute(query, params)
-                while True:
-                    row = cursor.fetchone()
-                    if row is None:
-                        break
-                    yield row
+            cursor = connection.cursor(pymysql.cursors.DictCursor)
+            logger(FINER, self.CLASS, "Executing SQL: {}, Parameters: {}".format(query, params))
+            time_start = time.perf_counter_ns()
+            cursor.execute(query, params)
+            result = cursor.fetchall()
+            logger(FINEST, self.CLASS, "SQL executed in {} ms.".format((time.perf_counter_ns() - time_start) // 1000000))
         finally:
+            cursor.close()
             connection.close()
-            logger(FINEST, self.CLASS, "SQL executed.")
+        return result
+        # try:
+        #     with connection.cursor() as cursor:
+        #         logger(FINER, self.CLASS, "Executing SQL: {}, Parameters: {}".format(query, params))
+        #         cursor.execute(query, params)
+        #         while True:
+        #             row = cursor.fetchone()
+        #             if row is None:
+        #                 break
+        #             yield row
+        # finally:
+        #     connection.close()
+        #     logger(FINEST, self.CLASS, "SQL executed.")
 
     def get_weather_last_record_datetime(self) -> float:
         """
@@ -92,9 +106,9 @@ class DatabaseDAO:
         logger(FINEST, self.CLASS, "SQL: {}.".format(query))
 
         for result in self.dbu_send(query):
-            logger(FINER, self.CLASS, "Retrieved datetime of the last weather record: {}".format(
-                timestampToDatetime(int(result[0].timestamp()))))
-            return result[0].timestamp()
+            last_record_datetime = int(result.get('datetime').timestamp())
+            logger(FINER, self.CLASS, "Retrieved datetime of the last weather record: {}".format(last_record_datetime))
+            return last_record_datetime
 
         return 0.0
 
@@ -165,7 +179,7 @@ class DatabaseDAO:
         temperature_history_data = []
         for rs in self.dbu_send(query):
             temperature_data_string = "{" + """ "datetime": "{}", "time_state_on": "{}", "unit_speed": "{}", "unit_temperature": "{}", "temperature": "{}", "windchill": "{}", "wspd": "{}", "sensor_1": "{}", "sensor_2": "{}", "sensor_3": "{}" """.format(
-                                           rs[0], rs[1], rs[2], rs[3], rs[4], rs[5], rs[6], rs[7], rs[8], rs[9]) + "}"
+                                           rs.get('datetime'), rs.get('time_state_on'), rs.get('unit_speed'), rs.get('unit_temperature'), rs.get('temperature'), rs.get('windchill'), rs.get('wspd'), rs.get('sensor_1'), rs.get('sensor_2'), rs.get('sensor_3')) + "}"
             temperature_history_data.append(temperature_data_string)
 
         logger(FINER, self.CLASS, "Retrieved {} temperatures from the database.".format(len(temperature_history_data)))
@@ -268,11 +282,11 @@ class DatabaseDAO:
         therm_setting = list(self.dbu_send(query))
 
         if therm_setting:
-            logger(FINER, self.CLASS, "Retrieved: 'thermostat Always ON temperature' -> {}".format(therm_setting))
-            return int(therm_setting[0])
+            logger(FINE, self.CLASS, "Retrieved: 'thermostat Always ON temperature' -> {}".format(therm_setting))
+            return int(therm_setting[0].get('temperature'))
         else:
             # This is the first time the server is being started, hence we add a default temperature.
-            query = "INSERT INTO thermostat VALUES ({}, \"00:00\", \"00:00\")".format(therm_default)
+            query = "INSERT INTO thermostat VALUES ('all', {}, \"00:00\", \"00:00\")".format(therm_default)
             self.dbu_send(query)
             logger(INFO, self.CLASS, "Initialised: 'thermostat Always ON temperature' -> {}".format(therm_default))
             return int(therm_default)
@@ -291,8 +305,8 @@ class DatabaseDAO:
 
         for value in self.dbu_send(query):
             logger(FINER, self.CLASS, "Retrieved: {}".format(value))
-            'Tuple(temperature-timeStart-timeEnd)'
-            thermostat_settings.append(tuple([value[0], value[1], value[2]]))
+            'Tuple(dayOfWeek-temperature-timeStart-timeEnd)'
+            thermostat_settings.append(tuple([value.get('day_of_week'), value.get('temperature'), value.get('timeStart'), value.get('timeEnd')]))
 
         return thermostat_settings
 

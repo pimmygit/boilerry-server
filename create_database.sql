@@ -1,10 +1,10 @@
-#DROP DATABASE boilerry;
-#DROP USER 'boser'@'%';
-#DROP USER 'boser'@localhost;
-#CREATE USER 'boser'@'%' IDENTIFIED BY 'S1r3n3';
+DROP DATABASE boilerry;
+DROP USER 'boser'@'%';
+DROP USER 'boser'@localhost;
+CREATE USER 'boser'@'%' IDENTIFIED BY 'S1r3n3';
 CREATE USER 'boser'@'localhost' IDENTIFIED BY 'S1r3n3';
 CREATE DATABASE boilerry COMMENT 'Household heating system';
-#GRANT ALTER, CREATE, DELETE, DROP, INSERT, SELECT, UPDATE ON boilerry.* TO 'boser'@'%';
+GRANT ALTER, CREATE, DELETE, DROP, INSERT, SELECT, UPDATE ON boilerry.* TO 'boser'@'%';
 GRANT ALTER, CREATE, DELETE, DROP, INSERT, SELECT, UPDATE ON boilerry.* TO 'boser'@'localhost';
 USE boilerry;
 #

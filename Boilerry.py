@@ -19,6 +19,7 @@
 # Use, copying, and/or disclosure of the file is strictly
 # prohibited unless otherwise provided in the license agreement.
 ###################################################################
+import asyncio
 import sys
 
 from Constants import CRITICAL
@@ -50,4 +51,5 @@ except Exception as e:
     sys.exit(1)
 
 # Start Android server
-AndroidServer(dao, gpio, sensor)
+server = AndroidServer(dao, gpio, sensor)
+asyncio.run(server.main())

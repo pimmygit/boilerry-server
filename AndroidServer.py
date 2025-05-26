@@ -4,7 +4,7 @@
 # -----------------------------------------------------------------
 # v.1.0.0 | 24.02.2018
 #
-# (C) Copyright VAYAK Ltd (info@vayak.com). 2018  
+# (C) Copyright VAYAK Ltd (info@vayak.com). 2018, 2025
 # All Rights Reserved
 #
 # THIS IS UNPUBLISHED PROPRIETARY SOURCE CODE
@@ -21,9 +21,11 @@
 ###################################################################
 import asyncio
 import json
+
 from json import JSONDecodeError
 
-from websockets.asyncio.server import serve
+import websockets
+from websockets.exceptions import ConnectionClosedError
 
 from Common import logger, retrieve_weather_history
 from ConfigStore import ConfigStore
@@ -96,18 +98,20 @@ class AndroidServer:
         self.dao = dao
         self.gpio = gpio
         self.thermo_sensor = sensor
+        logger(FINER, self.CLASS, "Android server initialised.")
 
+    async def main(self):
         def_host = ""
         def_port = "9741"
 
         logger(FINER, self.CLASS,
                "Opening WebSocket on port: {}..".format(self.config.getAndroidServer("port", def_port)))
-        handler = serve(self.process_request, self.config.getAndroidServer("host", def_host), self.config.getAndroidServer("port", def_port))
-        logger(FINER, self.CLASS, "Handler created.".format(self.config.getAndroidServer("port", def_port)))
-        asyncio.get_event_loop().run_until_complete(handler)
+        server = await websockets.serve(self.process_request, self.config.getAndroidServer("host", def_host), self.config.getAndroidServer("port", def_port))
         logger(FINER, self.CLASS, "Websocket created.".format(self.config.getAndroidServer("port", def_port)))
-        """Nothing below the line above will get executed - it loops the asyncio forever."""
-        asyncio.get_event_loop().run_forever()
+        await server.wait_closed()
+
+    if __name__ == "__main__":
+        asyncio.run(main())
 
     def get_json_from_request(self, request_string: str) -> json:
         """
@@ -229,62 +233,70 @@ class AndroidServer:
 
         return json_response
 
-    async def process_request(self, websocket: websockets, path):
+    async def process_request(self, websocket: websockets):
         """
         Determines and fires the action based on the request
 
         Args:
             websocket:  Request string received by the websocket.
-            path:       Absolutely no idea why this cannot be optional.
         Return:
             none
         Created:
             25.02.2018
         """
-        async for request_string in websocket:
-            json_request = self.get_json_from_request(request_string)
+        try:
+            async for request_string in websocket:
+                json_request = self.get_json_from_request(request_string)
 
-            if json_request is None or not self.validate_request(json_request):
-                return None
+                logger(FINEST, self.CLASS, "JSON request: {}".format(json_request))
 
-            # Upon receiving any request, tobe up to date with the latest weather history,
-            # we retrieve and save the latest missing weather information.
-            retrieve_weather_history(self)
+                if json_request is None or not self.validate_request(json_request):
+                    return None
 
-            logger(FINE, self.CLASS, "Processing request: {}".format(json.dumps(json_request)))
+                logger(FINEST, self.CLASS, "Request validated.")
 
-            # Based on the received request, we will update the Thermostat object accordingly
-            # build and send the response back to the client.
-            if json_request["name"] == CONST_THERMO_SWITCH:
-                self.config.setBoilerryServer(CONST_THERMO_SWITCH, str(json_request["value"]))
+                # Upon receiving any request, to be up-to-date with the latest weather history,
+                # we retrieve and save the latest missing weather information.
+                retrieve_weather_history(self)
 
-                if int(json_request["value"]) > 0:
+                logger(FINE, self.CLASS, "Processing request: {}".format(json.dumps(json_request)))
+
+                # Based on the received request, we will update the Thermostat object accordingly
+                # build and send the response back to the client.
+                if json_request["name"] == CONST_THERMO_SWITCH:
+                    self.config.setBoilerryServer(CONST_THERMO_SWITCH, str(json_request["value"]))
+
+                    if int(json_request["value"]) > 0:
+                        # Process the newly received settings immediately
+                        self.gpio.temperature_to_relay_state(thermostat.get_thermo_manual_temperature(),
+                                                             thermostat.get_temperature_now())
+                        """
+                        if not self.thermostat.is_alive():
+                            self.thermostat.start()
+                        """
+                    else:
+                        # self.thermostat.stop()
+                        self.gpio.setRelayState(False)
+
+                # At some point, we would be able to set temperature for time slots
+                # Time slot 00:00-00:00 is the temperature for the "Always On" state of the master switch.
+                if json_request["name"] == CONST_THERMO_TEMPERATURE:
+                    self.dao.set_thermostat(json_request["value"], "00:00", "00:00")
+
                     # Process the newly received settings immediately
                     self.gpio.temperature_to_relay_state(thermostat.get_thermo_manual_temperature(),
                                                          thermostat.get_temperature_now())
-                    """
-                    if not self.thermostat.is_alive():
-                        self.thermostat.start()
-                    """
-                else:
-                    # self.thermostat.stop()
-                    self.gpio.setRelayState(False)
 
-            # At some point, we would be able to set temperature for time slots
-            # Time slot 00:00-00:00 is the temperature for the "Always On" state of the master switch.
-            if json_request["name"] == CONST_THERMO_TEMPERATURE:
-                self.dao.set_thermostat(json_request["value"], "00:00", "00:00")
+                # Before building the request, we create the Thermostat object which will initialise
+                # with the latest state known to the server, as well as querying the DB and sensors.
+                # The Thermostat object is sort of a cache, helping out not to retrieve data too often.
+                thermostat = Thermostat(self.dao, self.gpio, self.thermo_sensor)
 
-                # Process the newly received settings immediately
-                self.gpio.temperature_to_relay_state(thermostat.get_thermo_manual_temperature(),
-                                                     thermostat.get_temperature_now())
-
-            # Before building the request, we create the Thermostat object which will initialise
-            # with the latest state known to the server, as well as querying the DB and sensors.
-            # The Thermostat object is sort of a cache, helping out not to retrieve data too often.
-            thermostat = Thermostat(self.dao, self.gpio, self.thermo_sensor)
-
-            # Regardless of the request/command that was sent to the server (us),
-            # we respond with the full state of the system
-            await websocket.send(json.dumps(self.build_state_response(thermostat)))
-            logger(FINE, self.CLASS, "Response sent: {}".format(CONST_THERMO_STATE))
+                # Regardless of the request/command that was sent to the server (us),
+                # we respond with the full state of the system
+                await websocket.send(json.dumps(self.build_state_response(thermostat)))
+                logger(FINE, self.CLASS, "Response sent: {}".format(CONST_THERMO_STATE))
+        except ConnectionClosedError as cce:
+            logger(FINE, self.CLASS, "Connection closed by client: {}".format(cce))
+        except Exception as e:
+            logger(WARNING, self.CLASS, "Unexpected error: {}".format(e))
