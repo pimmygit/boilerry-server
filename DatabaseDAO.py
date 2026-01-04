@@ -71,27 +71,19 @@ class DatabaseDAO:
         connection = self.db_pool.connection()
         try:
             cursor = connection.cursor(pymysql.cursors.DictCursor)
-            logger(FINER, self.CLASS, "Executing SQL: {}, Parameters: {}".format(query, params))
+            logger(FINEST, self.CLASS, "Executing SQL: {}, Parameters: {}".format(query, params))
             time_start = time.perf_counter_ns()
             cursor.execute(query, params)
             result = cursor.fetchall()
             logger(FINEST, self.CLASS, "SQL executed in {} ms.".format((time.perf_counter_ns() - time_start) // 1000000))
+        except Exception as e:
+            logger(WARNING, self.CLASS, "SQL execution error: {}".format(e))
         finally:
+            # Note that despite we close the connection here, it will still be alive for reuse
+            # until this thread is alive
             cursor.close()
             connection.close()
         return result
-        # try:
-        #     with connection.cursor() as cursor:
-        #         logger(FINER, self.CLASS, "Executing SQL: {}, Parameters: {}".format(query, params))
-        #         cursor.execute(query, params)
-        #         while True:
-        #             row = cursor.fetchone()
-        #             if row is None:
-        #                 break
-        #             yield row
-        # finally:
-        #     connection.close()
-        #     logger(FINEST, self.CLASS, "SQL executed.")
 
     def get_weather_last_record_datetime(self) -> float:
         """
@@ -101,18 +93,14 @@ class DatabaseDAO:
         Returns:            The datetime of when the last weather record was taken.
         Created:            18/04/2024
         """
-        query = "SELECT datetime FROM temperature WHERE temperature IS NULL ORDER BY datetime ASC LIMIT 1"
-
-        logger(FINEST, self.CLASS, "SQL: {}.".format(query))
+        query = "SELECT datetime FROM temperature WHERE temperature IS NULL ORDER BY datetime DESC LIMIT 1"
 
         for result in self.dbu_send(query):
-            last_record_datetime = int(result.get('datetime').timestamp())
-            logger(FINER, self.CLASS, "Retrieved datetime of the last weather record: {}".format(last_record_datetime))
-            return last_record_datetime
+            return int(result.get('datetime').timestamp())
 
         return 0.0
 
-    def store_weather_history(self, weather_history: List[Tuple[str, str, float, float, float, str]]) -> None:
+    def store_weather_history(self, weather_history: List[Tuple[str, str, float, float, float, str, str, str]]) -> None:
         """
         Function to populate all property temperature readings with historical weather data.
 
@@ -121,23 +109,30 @@ class DatabaseDAO:
         that fall within the same hour... hence the 'strange' date comparison in the SQL statement here.
 
         Args:
-            weather_history:    List of Tuples containing weather measurements.
+            weather_history:
+                list(Tuple[unit_speed, unit_temperature, temperature, windchill, wind, date_format, datetime, date_format])
         Returns:
             None
         Created:
             18/04/2024
         """
-        logger(FINE, self.CLASS, "Saving {} weather history measurements.".format(len(weather_history)))
+        if not weather_history:
+            logger(FINE, self.CLASS, "No weather history provided.")
+            return None
+
+        logger(FINER, self.CLASS, "Updating data with {} weather history measurements.".format(len(weather_history)))
 
         query = """UPDATE temperature 
         SET unit_speed = %s, unit_temperature = %s, temperature = %s, windchill = %s, wspd = %s 
         WHERE DATE_FORMAT(datetime, %s) = DATE_FORMAT(%s, %s)"""
 
+        time_start = time.perf_counter_ns()
         for measurement in weather_history:
-            logger(FINEST, self.CLASS, "Saving: {}".format(measurement))
             self.dbu_send(query, measurement)
 
-        logger(FINEST, self.CLASS, "SQL executed.")
+        logger(FINE, self.CLASS, "Updated indoor temperature data with {} weather measurements in {} ms.".format(
+            len(weather_history),
+            (time.perf_counter_ns() - time_start) // 1000000))
 
     def get_temperature_history(self, period_start: str = None, period_end: str = None) -> str:
         """

@@ -59,7 +59,12 @@ $BHOME/python/bin/pip install python-dateutil
 $BHOME/python/bin/pip install requests
 $BHOME/python/bin/pip install RPi.GPIO
 $BHOME/python/bin/pip install websockets
+# For some reason $BHOME/python/bin/pip no longer works. The below does
+$BHOME/python/bin/python -m pip install openmeteo-requests
+$BHOME/python/bin/python -m pip install requests-cache retry-requests numpy pandas
 
+# Required for NumPy
+sudo apt-get --assume-yes install libopenblas-dev
 
 ############################################################
 # Download the Boilerry repository

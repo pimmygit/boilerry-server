@@ -27,7 +27,7 @@ from json import JSONDecodeError
 import websockets
 from websockets.exceptions import ConnectionClosedError
 
-from Common import logger, retrieve_weather_history
+from Common import logger
 from ConfigStore import ConfigStore
 from Constants import CONST_THERMO_STATE, CONST_TEMP_HISTORY
 from Constants import CONST_THERMO_RELAY, CONST_THERMO_TEMPERATURE, CONST_TEMP_NOW, CONST_THERMO_SWITCH
@@ -36,6 +36,7 @@ from DS18B20 import DS18B20
 from DatabaseDAO import DatabaseDAO
 from GPIO import GPIO
 from Thermostat import Thermostat
+from WeatherDAO import retrieve_and_store_weather_history
 
 
 def init_state_response() -> json:
@@ -106,7 +107,11 @@ class AndroidServer:
 
         logger(FINER, self.CLASS,
                "Opening WebSocket on port: {}..".format(self.config.getAndroidServer("port", def_port)))
-        server = await websockets.serve(self.process_request, self.config.getAndroidServer("host", def_host), self.config.getAndroidServer("port", def_port))
+        server = await websockets.serve(
+            self.process_request,
+            self.config.getAndroidServer("host", def_host),
+            int(self.config.getAndroidServer("port", def_port))
+        )
         logger(FINER, self.CLASS, "Websocket created.".format(self.config.getAndroidServer("port", def_port)))
         await server.wait_closed()
 
@@ -257,7 +262,7 @@ class AndroidServer:
 
                 # Upon receiving any request, to be up-to-date with the latest weather history,
                 # we retrieve and save the latest missing weather information.
-                retrieve_weather_history(self)
+                retrieve_and_store_weather_history(self)
 
                 logger(FINE, self.CLASS, "Processing request: {}".format(json.dumps(json_request)))
 
