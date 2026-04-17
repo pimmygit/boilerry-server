@@ -36,7 +36,7 @@ from DS18B20 import DS18B20
 from DatabaseDAO import DatabaseDAO
 from GPIO import GPIO
 from Thermostat import Thermostat
-from WeatherDAO import retrieve_and_store_weather_history
+from WeatherDAO import WeatherDAO
 
 
 def init_state_response() -> json:
@@ -262,7 +262,13 @@ class AndroidServer:
 
                 # Upon receiving any request, to be up-to-date with the latest weather history,
                 # we retrieve and save the latest missing weather information.
-                retrieve_and_store_weather_history(self)
+                dao_hw = WeatherDAO(
+                    self.config.getMetStation("latitude"),
+                    self.config.getMetStation("longitude"),
+                    self.config.getMetStation("unit_speed"),
+                    self.config.getMetStation("unit_temperature"),
+                    self.config.getMetStation("min_days_history"))
+                dao_hw.retrieve_and_store_weather_history()
 
                 logger(FINE, self.CLASS, "Processing request: {}".format(json.dumps(json_request)))
 

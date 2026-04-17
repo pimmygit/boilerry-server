@@ -22,6 +22,7 @@ import time
 
 import pymysql
 
+from datetime import datetime
 from dbutils.persistent_db import PersistentDB
 from typing import List, Tuple
 
@@ -71,7 +72,7 @@ class DatabaseDAO:
         connection = self.db_pool.connection()
         try:
             cursor = connection.cursor(pymysql.cursors.DictCursor)
-            logger(FINEST, self.CLASS, "Executing SQL: {}, Parameters: {}".format(query, params))
+            logger(FINEST, self.CLASS, "SQL: {}, Parameters: {}".format(query, params))
             time_start = time.perf_counter_ns()
             cursor.execute(query, params)
             result = cursor.fetchall()
@@ -85,20 +86,50 @@ class DatabaseDAO:
             connection.close()
         return result
 
-    def get_weather_last_record_datetime(self) -> float:
+    def get_last_weather_record_timestamp(self, min_days_history: int) -> float:
         """
-        Function to retrieve the date time of when the last weather record was taken.
+        Retrieves the timestamp of the last weather data record.
 
-        Args:               None
-        Returns:            The datetime of when the last weather record was taken.
-        Created:            18/04/2024
+        In order to avoid large historical weather data retrievals which take time, we have a routine to periodically
+        call this function and pull historical weather data every 24 hours.
+
+        Assuming normal operation, the last weather timestamp could be the last time we pulled the weather history from the Weather API,
+        or if bigger than 24 hours, when the application was last started.
+
+        Any gaps in the data due to software malfunction will not be dealt by this function automatically.
+
+        Args:
+            self:               The caller.
+            min_days_history:   int
+        Returns:
+            float:              Timestamp of the last weather record in the database.
+        Created:
+            17/04/2026
         """
-        query = "SELECT datetime FROM temperature WHERE temperature IS NULL ORDER BY datetime DESC LIMIT 1"
+        # Check the timestamp of the last weather record so that we can retrieve the history starting from then.
+        last_weather_record_timestamp = 0.0
+        query = "SELECT datetime FROM temperature WHERE temperature IS NOT NULL ORDER BY datetime DESC LIMIT 1"
 
         for result in self.dbu_send(query):
-            return int(result.get('datetime').timestamp())
+            last_weather_record_timestamp = int(result.get('datetime').timestamp())
 
-        return 0.0
+        # Check for data availability and continuity over the past 24 hours (see the explanation in the DocString.
+        if last_weather_record_timestamp != 0.0 or last_weather_record_timestamp >= datetime.now().timestamp() - (24 * 60 * 60):
+            logger(FINER, "DatabaseDAO", "Retrieved timestamp of the last historical weather data point as: {}".format(
+                datetime.fromtimestamp(last_weather_record_timestamp).strftime('%Y-%m-%d %H:%M:%S')))
+            return last_weather_record_timestamp
+
+        # If there is no record in the database yet, or the historical weather data is older than 24 hours,
+        # we use the minimum required history specified in the Config file, and let the store_weather_history() function
+        # to fill in any inconsistencies around the missing data gaps.
+        if not min_days_history or min_days_history == "":
+            logger(FINE, "DatabaseDAO", "No historical weather found for the past 24 hours in the database. "
+                                        "The property 'min_days_history' is not set, hence using 24 hours back.")
+            return datetime.now().timestamp() - 86400
+        else:
+            logger(FINE, "DatabaseDAO", "No historical weather found for the past 24 hours in the database. "
+                                        "Using the value of property 'min_days_history': {}".format(min_days_history))
+            return datetime.now().timestamp() - int(min_days_history) * 86400
 
     def store_weather_history(self, weather_history: List[Tuple[str, str, float, float, float, str, str, str]]) -> None:
         """
@@ -273,7 +304,6 @@ class DatabaseDAO:
         """
         therm_default = 16.0
         query = "SELECT temperature FROM thermostat WHERE timeStart = \"00:00\" AND timeEnd = \"00:00\""
-        logger(FINEST, self.CLASS, "SQL: {}.".format(query))
         therm_setting = list(self.dbu_send(query))
 
         if therm_setting:
@@ -295,8 +325,6 @@ class DatabaseDAO:
         """
         thermostat_settings = []
         query = "SELECT * FROM thermostat"
-
-        logger(FINEST, self.CLASS, "SQL: {}.".format(query))
 
         for value in self.dbu_send(query):
             logger(FINER, self.CLASS, "Retrieved: {}".format(value))
@@ -339,8 +367,5 @@ class DatabaseDAO:
 
         query = "UPDATE thermostat SET temperature=%s, timeStart=%s, timeEnd=%s"
         data = (temperature, time_start, time_end)
-
-        logger(FINEST, self.CLASS, "SQL: {} -> temperature[{}], start[{}], end[{}]."
-               .format(query, temperature, time_start, time_end))
 
         self.dbu_send(query, data)
