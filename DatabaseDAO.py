@@ -47,7 +47,9 @@ class DatabaseDAO:
         """
         self.CLASS = "DatabaseDAO"
 
-        logger(FINER, self.CLASS, "Connecting to database: host[{}], port[{}], name[{}], user[{}], pass[*****].".format(DB_HOST, DB_PORT, DB_NAME, DB_USER))
+        logger(FINER, self.CLASS,
+               "Connecting to database: host[{}], port[{}], name[{}], user[{}], pass[*****]."
+               .format(DB_HOST, DB_PORT, DB_NAME, DB_USER))
         self.db_pool = PersistentDB(
             creator=pymysql,
             host=DB_HOST,
@@ -76,7 +78,8 @@ class DatabaseDAO:
             time_start = time.perf_counter_ns()
             cursor.execute(query, params)
             result = cursor.fetchall()
-            logger(FINEST, self.CLASS, "SQL executed in {} ms.".format((time.perf_counter_ns() - time_start) // 1000000))
+            logger(FINEST, self.CLASS,
+                   "SQL executed in {} ms.".format((time.perf_counter_ns() - time_start) // 1000000))
         except Exception as e:
             logger(WARNING, self.CLASS, "SQL execution error: {}".format(e))
         finally:
@@ -113,25 +116,30 @@ class DatabaseDAO:
         for result in self.dbu_send(query):
             last_weather_record_timestamp = int(result.get('datetime').timestamp())
 
-        # Check for data availability and continuity over the past 24 hours (see the explanation in the DocString.
-        if last_weather_record_timestamp != 0.0 or last_weather_record_timestamp >= datetime.now().timestamp() - (24 * 60 * 60):
+        last_weather_record_string = datetime.fromtimestamp(last_weather_record_timestamp).strftime('%Y-%m-%d %H:%M:%S')
+        # Check for data availability and continuity over the past 24 hours (see the explanation in the DocString).
+        if last_weather_record_timestamp != 0.0 and last_weather_record_timestamp >= datetime.now().timestamp() - (24 * 60 * 60):
             logger(FINER, "DatabaseDAO", "Retrieved timestamp of the last historical weather data point as: {}".format(
-                datetime.fromtimestamp(last_weather_record_timestamp).strftime('%Y-%m-%d %H:%M:%S')))
+                last_weather_record_string))
             return last_weather_record_timestamp
 
         # If there is no record in the database yet, or the historical weather data is older than 24 hours,
-        # we use the minimum required history specified in the Config file, and let the store_weather_history() function
-        # to fill in any inconsistencies around the missing data gaps.
+        # we use the minimum required history specified in the Config file.
+        # For now, we are not back-filling any gaps of missing data - once we have an ML model, we might need that.
         if not min_days_history or min_days_history == "":
-            logger(FINE, "DatabaseDAO", "No historical weather found for the past 24 hours in the database. "
-                                        "The property 'min_days_history' is not set, hence using 24 hours back.")
+            logger(FINE, "DatabaseDAO", "No historical weather found for the period since '{}'. "
+                                        "The property 'min_days_history' is not set, hence using 24 hours back."
+                   .format(last_weather_record_string))
             return datetime.now().timestamp() - 86400
         else:
-            logger(FINE, "DatabaseDAO", "No historical weather found for the past 24 hours in the database. "
-                                        "Using the value of property 'min_days_history': {}".format(min_days_history))
+            logger(FINE, "DatabaseDAO", "No historical weather found for the period since '{}'. "
+                                        "Using the value of property 'min_days_history': {}"
+                   .format(last_weather_record_string, min_days_history))
             return datetime.now().timestamp() - int(min_days_history) * 86400
 
-    def store_weather_history(self, weather_history: List[Tuple[str, str, float, float, float, str, str, str]]) -> None:
+    def store_weather_history(self,
+                              last_weather_record_timestamp,
+                              weather_history: List[Tuple[str, str, float, float, float, str, str, str]]) -> None:
         """
         Function to populate all property temperature readings with historical weather data.
 
@@ -140,6 +148,8 @@ class DatabaseDAO:
         that fall within the same hour... hence the 'strange' date comparison in the SQL statement here.
 
         Args:
+            last_weather_record_timestamp:
+                int
             weather_history:
                 list(Tuple[unit_speed, unit_temperature, temperature, windchill, wind, date_format, datetime, date_format])
         Returns:
@@ -159,7 +169,10 @@ class DatabaseDAO:
 
         time_start = time.perf_counter_ns()
         for measurement in weather_history:
-            self.dbu_send(query, measurement)
+            # We get the full 24-hour data set,
+            # but we want to update only the rows newer than the 'last_weather_record_timestamp'.
+            if last_weather_record_timestamp < measurement[6].timestamp():
+                self.dbu_send(query, measurement)
 
         logger(FINE, self.CLASS, "Updated indoor temperature data with {} weather measurements in {} ms.".format(
             len(weather_history),
@@ -200,12 +213,13 @@ class DatabaseDAO:
             query, sensor, period_start, period_end))
         """
         query = "SELECT * FROM temperature WHERE datetime >= {} AND datetime <= {}".format(period_start, period_end)
-        logger(FINEST, self.CLASS, "SQL: {}.".format(query))
 
         temperature_history_data = []
         for rs in self.dbu_send(query):
             temperature_data_string = "{" + """ "datetime": "{}", "time_state_on": "{}", "unit_speed": "{}", "unit_temperature": "{}", "temperature": "{}", "windchill": "{}", "wspd": "{}", "sensor_1": "{}", "sensor_2": "{}", "sensor_3": "{}" """.format(
-                                           rs.get('datetime'), rs.get('time_state_on'), rs.get('unit_speed'), rs.get('unit_temperature'), rs.get('temperature'), rs.get('windchill'), rs.get('wspd'), rs.get('sensor_1'), rs.get('sensor_2'), rs.get('sensor_3')) + "}"
+                rs.get('datetime'), rs.get('time_state_on'), rs.get('unit_speed'), rs.get('unit_temperature'),
+                rs.get('temperature'), rs.get('windchill'), rs.get('wspd'), rs.get('sensor_1'), rs.get('sensor_2'),
+                rs.get('sensor_3')) + "}"
             temperature_history_data.append(temperature_data_string)
 
         logger(FINER, self.CLASS, "Retrieved {} temperatures from the database.".format(len(temperature_history_data)))
@@ -217,8 +231,8 @@ class DatabaseDAO:
         temperature_history_data = temperature_history_data.replace("}\"", "}")
         temperature_history_data = temperature_history_data.replace("None", "")
 
-        #response_log = (json.dumps(temperature_history_data)[:300] + '..(truncated)') if len(json.dumps(temperature_history_data)) > 300 else json.dumps(temperature_history_data)
-        #logger(FINEST, self.CLASS, "Json: {}".format(response_log))
+        # response_log = (json.dumps(temperature_history_data)[:300] + '..(truncated)') if len(json.dumps(temperature_history_data)) > 300 else json.dumps(temperature_history_data)
+        # logger(FINEST, self.CLASS, "Json: {}".format(response_log))
 
         return temperature_history_data
 
@@ -329,7 +343,8 @@ class DatabaseDAO:
         for value in self.dbu_send(query):
             logger(FINER, self.CLASS, "Retrieved: {}".format(value))
             'Tuple(dayOfWeek-temperature-timeStart-timeEnd)'
-            thermostat_settings.append(tuple([value.get('day_of_week'), value.get('temperature'), value.get('timeStart'), value.get('timeEnd')]))
+            thermostat_settings.append(tuple(
+                [value.get('day_of_week'), value.get('temperature'), value.get('timeStart'), value.get('timeEnd')]))
 
         return thermostat_settings
 

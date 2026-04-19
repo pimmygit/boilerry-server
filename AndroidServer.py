@@ -81,11 +81,12 @@ class AndroidServer:
     1.0.0. | 24.02.2018 - First version
     """
 
-    def __init__(self, dao: DatabaseDAO, gpio: GPIO, sensor: DS18B20):
+    def __init__(self, config: ConfigStore, dao: DatabaseDAO, gpio: GPIO, sensor: DS18B20):
         """
         Initialise and start the thread which listens for connections and act on requests.
 
         Args:
+            config: Config Store
             dao:    Database Access Object: MySQL database
             gpio:   The interface to external peripheral
             sensor: USB temperature sensor
@@ -95,7 +96,7 @@ class AndroidServer:
             24.02.2018
         """
         self.CLASS = "AndroidServer"
-        self.config = ConfigStore()
+        self.config = config
         self.dao = dao
         self.gpio = gpio
         self.thermo_sensor = sensor
@@ -262,12 +263,7 @@ class AndroidServer:
 
                 # Upon receiving any request, to be up-to-date with the latest weather history,
                 # we retrieve and save the latest missing weather information.
-                dao_hw = WeatherDAO(
-                    self.config.getMetStation("latitude"),
-                    self.config.getMetStation("longitude"),
-                    self.config.getMetStation("unit_speed"),
-                    self.config.getMetStation("unit_temperature"),
-                    self.config.getMetStation("min_days_history"))
+                dao_hw = WeatherDAO(self.config, self.dao)
                 dao_hw.retrieve_and_store_weather_history()
 
                 logger(FINE, self.CLASS, "Processing request: {}".format(json.dumps(json_request)))

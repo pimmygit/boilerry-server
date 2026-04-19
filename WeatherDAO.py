@@ -17,35 +17,27 @@ from Common import logger, timestampToDatetime, timestampToDate, getCurrentDate
 
 
 class WeatherDAO:
-    def __init__(self,
-                 latitude: str,
-                 longitude: str,
-                 unit_speed: str,
-                 unit_temperature: str,
-                 min_days_history: str
-                 ):
+    def __init__(self, config: ConfigStore, dao_db: DatabaseDAO):
         """
         Create object and initialize
 
         Args:
             self:               The caller.
-            latitude:           str,
-            longitude:          str,
-            unit_speed:         str,
-            unit_temperature:   str,
-            min_days_history:   str
+            config:             Config Store
+            dao_db:             DatabaseDAO
         Returns:
             str:                JSON String containing
         Created:
             17/04/2026
         """
-        self.config = ConfigStore()
-        self.dao_db = DatabaseDAO()
-        self.latitude = latitude
-        self.longitude = longitude
-        self.unit_speed = unit_speed
-        self.unit_temperature = unit_temperature
-        self.min_days_history = min_days_history
+        self.config = config
+        self.dao_db = dao_db
+
+        self.latitude = config.getMetStation("latitude")
+        self.longitude = config.getMetStation("longitude")
+        self.unit_speed = config.getMetStation("unit_speed")
+        self.unit_temperature = config.getMetStation("unit_temperature")
+        self.min_days_history = config.getMetStation("min_days_history")
 
     def retrieve_and_store_weather_history(self) -> None:
         """
@@ -81,7 +73,9 @@ class WeatherDAO:
         logger(FINE, "WeatherDAO", "Retrieved {} hourly weather data points".format(len(weather_history)))
 
         # Enrich all existing indoor temperature measurements with the weather data
-        DatabaseDAO.store_weather_history(DatabaseDAO(), weather_history)
+        # The Weather API will return the full 24 hours of data for that day, while we only need to update the missing hours,
+        # hence we pass the 'last_weather_record_timestamp' too.
+        self.dao_db.store_weather_history(last_weather_record_timestamp, weather_history)
 
     def api_open_meteo(self, last_weather_record_timestamp) -> List[Tuple[str, str, float, float, float, str, str, str]]:
         """
@@ -124,9 +118,9 @@ class WeatherDAO:
 
         # Process first location. Add a for-loop for multiple locations or weather models
         response = responses[0]
-        logger(FINEST, "WeatherDAO", "Coordinates: {}°N {}°E".format(response.Latitude(), response.Longitude()))
-        logger(FINEST, "WeatherDAO", "Elevation: {} m asl".format(response.Elevation()))
-        logger(FINEST, "WeatherDAO", "Timezone difference to GMT+0: {}s".format(response.UtcOffsetSeconds()))
+        # logger(FINEST, "WeatherDAO", "Coordinates: {}°N {}°E".format(response.Latitude(), response.Longitude()))
+        # logger(FINEST, "WeatherDAO", "Elevation: {} meters Above Sea Level (ASL).".format(response.Elevation()))
+        # logger(FINEST, "WeatherDAO", "Timezone difference to GMT+0: {}s".format(response.UtcOffsetSeconds()))
 
         # Process hourly data. The order of variables needs to be the same as requested.
         hourly = response.Hourly()
@@ -169,7 +163,7 @@ class WeatherDAO:
         # Convert to list of (ordinary) tuples
         return list(hourly_dataframe.itertuples(index=False, name=None))
 
-    def api_visual_crossing(self) -> List[Tuple[str, str, float, float, float, str]]:
+    def api_visual_crossing(self) -> List[Tuple[str, str, float, float, float, str, str, str]]:
         """
         Retrieves the weather history for the specified period from VisualCrossing API
 

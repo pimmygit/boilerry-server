@@ -44,18 +44,12 @@ sensor = DS18B20()
 #motion_recorder.start()
 
 # Start periodic retrieval of the outside weather data for faster processing
-dao_hw = WeatherDAO(
-    config.getMetStation("latitude"),
-    config.getMetStation("longitude"),
-    config.getMetStation("unit_speed"),
-    config.getMetStation("unit_temperature"),
-    config.getMetStation("min_days_history")
-)
+dao_hw = WeatherDAO(config, dao_db)
 
 time_to_execute_prop = config.getMetStation("time_to_retrieve_weather_history")
 logger(INFO, "Boilerry", "Starting daily weather data collection for latitude[{}] and longitude[{}] at '{}' o'clock.".format(
-    ConfigStore.getMetStation(ConfigStore(), "latitude"),
-    ConfigStore.getMetStation(ConfigStore(), "longitude"),
+    config.getMetStation("latitude"),
+    config.getMetStation("longitude"),
     time_to_execute_prop))
 if time_to_execute_prop:
     # Set up scheduler
@@ -75,9 +69,8 @@ try:
 except Exception as e:
     logger(CRITICAL, "Boilerry", "Failed to start the Thermostat controller: {}. Exiting..".format(e))
     #motion_recorder.stop()
-    #thermo_recorder.stop()
     sys.exit(1)
 
 # Start Android server
-server = AndroidServer(dao_db, gpio, sensor)
+server = AndroidServer(config, dao_db, gpio, sensor)
 asyncio.run(server.main())
