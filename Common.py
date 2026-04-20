@@ -45,7 +45,8 @@ def validateDateTime(datetime_text: str) -> bool:
 
 
 def getCurrentTime() -> str:
-    return str(strftime("%Y-%m-%dT%H:%M:%S", gmtime()))
+    # return str(strftime("%Y-%m-%dT%H:%M:%S", gmtime()))
+    return datetime.now().strftime("%Y-%m-%dT%H:%M:%S")
 
 
 def getCurrentDate() -> str:

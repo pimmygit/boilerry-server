@@ -17,13 +17,15 @@
 # Use, copying, and/or disclosure of the file is strictly
 # prohibited unless otherwise provided in the license agreement.
 ###################################################################
+import datetime as dt
 import threading
-from time import sleep
+from scheduler import Scheduler
 
 from Common import *
 from DS18B20 import DS18B20
 from DatabaseDAO import DatabaseDAO
 from GPIO import GPIO
+from WeatherDAO import WeatherDAO
 
 
 class ThermoControl(threading.Thread):
@@ -60,6 +62,24 @@ class ThermoControl(threading.Thread):
         self.running = True
         self.seconds_heating_on = 0
 
+        self.schedule = None
+
+        # Start periodic retrieval of the outside weather data for faster processing
+        dao_hw = WeatherDAO(self.config, self.dao)
+
+        time_to_execute_prop = self.config.getMetStation("time_to_retrieve_weather_history")
+        if time_to_execute_prop:
+            logger(INFO, "Boilerry", "Starting daily weather data collection for latitude[{}] and longitude[{}] at {} o'clock."
+                   .format(self.config.getMetStation("latitude"), self.config.getMetStation("longitude"), time_to_execute_prop))
+
+            self.schedule = Scheduler()
+            self.schedule.daily(
+                dt.datetime.strptime(time_to_execute_prop, "%H:%M:%S").time(),
+                dao_hw.retrieve_and_store_weather_history_periodically
+            )
+        else:
+            logger(WARNING, "Boilerry", "No periodic weather retrieval due to missing 'time_to_retrieve_weather_history' property.")
+
     def run(self):
         """
         Thread to perform the periodic operations to set the boiler state according the settings stored in the database.
@@ -67,6 +87,9 @@ class ThermoControl(threading.Thread):
         logger(FINE, self.CLASS, "Starting thermostat temperature control..")
 
         while self.running:
+            logger(FINEST, self.CLASS, "Checking for scheduled tasks..")
+            self.schedule.exec_jobs()
+
             logger(FINEST, self.CLASS, "Checking ThermoSwitch state..")
             thermo_switch = int(self.config.getBoilerryServer(CONST_THERMO_SWITCH, 1))
 

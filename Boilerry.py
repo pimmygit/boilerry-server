@@ -20,19 +20,16 @@
 # prohibited unless otherwise provided in the license agreement.
 ###################################################################
 import asyncio
-import sched
 import sys
-import time
 
 from AndroidServer import AndroidServer
 from Common import logger
 from ConfigStore import ConfigStore
-from Constants import INFO, CRITICAL
+from Constants import CRITICAL
 from DatabaseDAO import DatabaseDAO
 from DS18B20 import DS18B20
 from GPIO import GPIO
 from ThermoControl import ThermoControl
-from WeatherDAO import WeatherDAO
 
 config = ConfigStore()
 dao_db = DatabaseDAO()
@@ -42,25 +39,6 @@ sensor = DS18B20()
 # Start motion recording
 #motion_recorder = MotionRecorder(GPIO_PIN_PIR)
 #motion_recorder.start()
-
-# Start periodic retrieval of the outside weather data for faster processing
-dao_hw = WeatherDAO(config, dao_db)
-
-time_to_execute_prop = config.getMetStation("time_to_retrieve_weather_history")
-logger(INFO, "Boilerry", "Starting daily weather data collection for latitude[{}] and longitude[{}] at '{}' o'clock.".format(
-    config.getMetStation("latitude"),
-    config.getMetStation("longitude"),
-    time_to_execute_prop))
-if time_to_execute_prop:
-    # Set up scheduler
-    s = sched.scheduler(time.localtime, time.sleep)
-    # Schedule when you want the action to occur
-    time_to_execute = time.strptime(time_to_execute_prop, '%H:%M:%S')
-    s.enterabs(time_to_execute, 0, dao_hw.retrieve_and_store_weather_history)
-    # Block until the action has been run
-    s.run()
-else:
-    logger(INFO, "Boilerry", "Missing 'time_to_retrieve_weather_history' property prevents from periodic weather retrieval.")
 
 # Start the thermostat control
 try:

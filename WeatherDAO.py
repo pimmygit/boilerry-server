@@ -39,6 +39,21 @@ class WeatherDAO:
         self.unit_temperature = config.getMetStation("unit_temperature")
         self.min_days_history = config.getMetStation("min_days_history")
 
+    def retrieve_and_store_weather_history_periodically(self) -> None:
+        """
+        Just a wrapper that states it is called by a scheduler
+
+        Args:
+            self:               The caller,
+        Returns:
+            str:                None
+        Created:
+            20/04/2026
+        """
+        logger(FINE, "WeatherDAO", "Periodic retrieval of the weather history '{}'."
+               .format(self.config.getMetStation("time_to_retrieve_weather_history")))
+        self.retrieve_and_store_weather_history()
+
     def retrieve_and_store_weather_history(self) -> None:
         """
         Retrieves the historical weather data and stores it in the database
@@ -46,7 +61,7 @@ class WeatherDAO:
         Args:
             self:               The caller,
         Returns:
-            str:                JSON String containing
+            str:                None
         Created:
             19/10/2025
         """

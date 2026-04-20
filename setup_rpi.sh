@@ -1,5 +1,5 @@
 #! /bin/sh
-export BHOME=/opt/boilerry
+export BHOME=/opt/boilerry-server
 ############################################################
 # SSH and WiFi should be enabled during the SD Card flashing.
 ############################################################
@@ -62,6 +62,7 @@ $BHOME/python/bin/pip install websockets
 # For some reason $BHOME/python/bin/pip no longer works. The below does
 $BHOME/python/bin/python -m pip install openmeteo-requests
 $BHOME/python/bin/python -m pip install requests-cache retry-requests numpy pandas
+$BHOME/python/bin/python -m pip install redengine
 
 # Required for NumPy
 sudo apt-get --assume-yes install libopenblas-dev
