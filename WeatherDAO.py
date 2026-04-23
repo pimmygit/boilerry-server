@@ -13,7 +13,7 @@ from datetime import datetime
 from ConfigStore import ConfigStore
 from DatabaseDAO import DatabaseDAO
 from Constants import *
-from Common import logger, timestampToDatetime, timestampToDate, getCurrentDate
+from Common import logger, timestampToDatetime, timestampToDate, getCurrentDate, getCurrentTime
 
 
 class WeatherDAO:
@@ -50,7 +50,7 @@ class WeatherDAO:
         Created:
             20/04/2026
         """
-        logger(FINE, "WeatherDAO", "Periodic retrieval of the weather history '{}'."
+        logger(FINE, "WeatherDAO", "Periodic retrieval of the weather history at '{}'."
                .format(self.config.getMetStation("time_to_retrieve_weather_history")))
         self.retrieve_and_store_weather_history()
 
@@ -92,13 +92,14 @@ class WeatherDAO:
         # hence we pass the 'last_weather_record_timestamp' too.
         self.dao_db.store_weather_history(last_weather_record_timestamp, weather_history)
 
-    def api_open_meteo(self, last_weather_record_timestamp) -> List[Tuple[str, str, float, float, float, str, str, str]]:
+    def api_open_meteo(self, last_weather_record_timestamp: int) -> List[Tuple[str, str, float, float, float, str, str, str]]:
         """
         Retrieves the weather history for the specified period from OpenMeteo
 
         Args:
+            last_weather_record_timestamp:  The timestamp in seconds of the last weather record.
         Returns:
-            str:                            List of hourly weather measurements
+            str:                            List of hourly weather measurements.
         Created:
             19/10/2025
         """
@@ -126,7 +127,7 @@ class WeatherDAO:
             logger(FINEST, "WeatherDAO", "Request string: {}".format(str(params)))
 
             responses = openmeteo.weather_api(url, params=params)
-            logger(FINEST, "WeatherDAO", "Response received: OK")
+            # logger(FINEST, "WeatherDAO", "Response received: OK")
         except Exception as e:
             logger(CRITICAL, "WeatherDAO", "Failed to fetch historical weather due to exception: {}".format(str(e)))
             return None
@@ -158,25 +159,39 @@ class WeatherDAO:
             logger(FINEST, "WeatherDAO", "No historical weather returned.")
             return None
 
-        # We need to enrich the dataframe with extra data to match the database schema
+        # logger(FINEST, "WeatherDAO", "API Dataframe: {}".format(hourly_dataframe))
+
+        # A.) For maximum performance, we discard all elements for time earlier than the time now,
+        # and older than 'last_weather_record_timestamp', because
+        # these times are either yet not available in the database, or already updated.
+        # If we dont remove them, we would be updating the database unnecessary, loosing 0.5 sec per update.
+        # 1. Ensure the first column is datetime (assuming it's the first column at index 0)
+        first_col = hourly_dataframe.columns[0]
+        hourly_dataframe[first_col] = pd.to_datetime(hourly_dataframe[first_col])
+
+        # 2. Filter the rows specifically on that column
+        mask = (hourly_dataframe[first_col] >= timestampToDatetime(last_weather_record_timestamp)) & \
+               (hourly_dataframe[first_col] <= getCurrentTime())
+        df_filtered = hourly_dataframe[mask]
+
+        # B.) We need to enrich the dataframe with extra data to match the database schema
         # Currently we have:
         #       date - temperature_2m - w_chill - wind
         # while we need:
         #       unit_speed - unit_temperature - temperature - w_chill - wind - date_format - date - date_format
-
         # 1. Add the extra data
-        hourly_dataframe.insert(1, "unit_speed", self.unit_speed)
-        hourly_dataframe.insert(2, "unit_temperature", self.unit_temperature)
-        hourly_dataframe.insert(6, "db_date_format_1", db_date_format)
-        hourly_dataframe.insert(7, "db_date_format_2", db_date_format)
+        df_filtered.insert(1, "unit_speed", self.unit_speed)
+        df_filtered.insert(2, "unit_temperature", self.unit_temperature)
+        df_filtered.insert(6, "db_date_format_1", db_date_format)
+        df_filtered.insert(7, "db_date_format_2", db_date_format)
 
         # 2. Reorder the columns to put the date which was at index 0 to the end.
-        hourly_dataframe = hourly_dataframe.iloc[:, [1, 2, 3, 4, 5, 6, 0, 7]]
+        df_filtered = df_filtered.iloc[:, [1, 2, 3, 4, 5, 6, 0, 7]]
 
-        # logger(FINEST, "WeatherDAO", "Hourly data: {}".format(hourly_dataframe))
+        # logger(FINEST, "WeatherDAO", "Filtered and enriched DF: {}".format(df_filtered))
 
         # Convert to list of (ordinary) tuples
-        return list(hourly_dataframe.itertuples(index=False, name=None))
+        return list(df_filtered.itertuples(index=False, name=None))
 
     def api_visual_crossing(self) -> List[Tuple[str, str, float, float, float, str, str, str]]:
         """

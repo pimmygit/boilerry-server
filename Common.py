@@ -46,7 +46,7 @@ def validateDateTime(datetime_text: str) -> bool:
 
 def getCurrentTime() -> str:
     # return str(strftime("%Y-%m-%dT%H:%M:%S", gmtime()))
-    return datetime.now().strftime("%Y-%m-%dT%H:%M:%S")
+    return datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
 
 def getCurrentDate() -> str:
@@ -95,7 +95,7 @@ def timestampToDatetime(timestamp: int) -> str:
     Returns:
         Formatted datetime to store in database
     """
-    return timestampToLocaLTime(timestamp).strftime("%Y-%m-%dT%H:%M:%S")
+    return timestampToLocaLTime(timestamp).strftime("%Y-%m-%d %H:%M:%S")
 
 
 def timestampToDate(timestamp: int) -> str:
